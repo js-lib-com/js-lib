@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="library" default="all">
+	<import file="d://lib/tasks.xml" />
+
+	<!-- update js-lib.xml when change version -->
+	<property name="VERSION" value="1.3.7" />
+
+	<property name="BUILD" value="build" />
+
+	<property name="CLIENT-JS" value="${BUILD}/js-lib-${VERSION}.js" />
+	<property name="CLIENT-JS.DEV" value="${BUILD}/js-lib-${VERSION}.dev.js" />
+	<property name="CLIENT-API" value="${BUILD}/api-doc/client" />
+
+	<!-- next basedir are used when target is executed from master builder -->
+	<property name="SRC" value="${basedir}/src" />
+
+	<target name="all">
+		<antcall target="tests-suite" />
+		<antcall target="development-pack" />
+		<antcall target="production-pack" />
+		<antcall target="generate-api-doc" />
+	</target>
+
+	<target name="pack-all">
+		<antcall target="development-pack" />
+		<antcall target="production-pack" />
+	</target>
+
+	<target name="development-pack">
+		<js.PackScriptArchive sourcepath="${SRC}" filename="${CLIENT-JS.DEV}" omnideps="legacy,bootstrap" verbose="yes" debug="yes" nice="yes" removeApiDoc="true" removeAssertions="true" />
+	</target>
+
+	<target name="production-pack">
+		<js.PackScriptArchive sourcepath="${SRC}" filename="${CLIENT-JS}" omnideps="legacy,bootstrap" verbose="yes" />
+	</target>
+
+	<target name="generate-api-doc">
+		<js.GenerateScriptDoc sourcepath="${SRC}" destdir="${CLIENT-API}" excludes="bootstrap legacy" windowtitle="j(s)-lib Client">
+			<link href="http://api.js-lib.com/window/" />
+		</js.GenerateScriptDoc>
+	</target>
+
+	<target name="sync-api-doc" depends="generate-api-doc">
+		<js.Sync source="${CLIENT-API}" host="js-lib.com" target="api.js-lib.com/client" />
+	</target>
+
+	<target name="publish-library" depends="tests-suite, development-pack, sync-api-doc">
+		<zip destfile="${BUILD}/export/js-lib.zip">
+			<fileset dir="." includes="js-lib.xml" />
+			<fileset dir="src/js/format" includes="*.xml" />
+			<zipfileset dir="${BUILD}" includes="js-lib-${VERSION}.dev.js" fullpath="js-lib.js" />
+		</zip>
+		<js.Sync source="${BUILD}/export" host="js-lib.com" target="js-lib.com/libraries" />
+	</target>
+
+	<target name="clean-all">
+		<delete file="${CLIENT-JS}" verbose="true" />
+		<delete file="${CLIENT-JS.DEV}" verbose="true" />
+		<delete verbose="true">
+			<fileset dir="test/js/tests" includes="**/*.html" />
+		</delete>
+	</target>
+
+	<!-- ++++++++++++++++++++++++++++++++++++++++++++++++++++++  -->
+	<!--                      UNIT TESTS                         -->
+	<!-- ++++++++++++++++++++++++++++++++++++++++++++++++++++++  -->
+
+	<property name="FIRE-FOX" location="C:\Users\DEV\AppData\Local\Mozilla Firefox\firefox.exe" />
+	<property name="INTERNET-EXPLORER" location="C:\Program Files\Internet Explorer\iexplore.exe" />
+	<property name="CHROME" location="C:\Users\Iulian Rotaru\AppData\Local\Google\Chrome\Application\chrome.exe" />
+	<property name="OPERA" location="C:\Program Files (x86)\Opera\opera.exe" />
+	<property name="SAFARI" location="C:\Program Files (x86)\Safari\safari.exe" />
+	<property name="FILE" location="${basedir}/test/build-tests-suite.html" />
+
+	<property name="WAR" value="js-tests.war" />
+	<property name="CONTAINER" value="D:\jvm\tomcat-7.0.30\webapps" />
+
+	<target name="tests-suite">
+		<exec executable="${FIRE-FOX}" failonerror="false" resultproperty="RETURN-CODE">
+			<arg value="${FILE}" />
+		</exec>
+		<fail if="${RETURN-CODE}">TESTS FAIL</fail>
+		<echo>TEST COMPLETE</echo>
+	</target>
+
+	<target name="internet-explorer-tests-suite">
+		<exec executable="${INTERNET-EXPLORER}" failonerror="false" resultproperty="RETURN-CODE">
+			<arg value="${FILE}" />
+		</exec>
+		<fail if="${RETURN-CODE}">TESTS FAIL</fail>
+		<echo>TEST COMPLETE</echo>
+	</target>
+
+	<target name="chrome-tests-suite">
+		<exec executable="${CHROME}" failonerror="false" resultproperty="RETURN-CODE">
+			<arg value="${FILE}" />
+		</exec>
+		<fail if="${RETURN-CODE}">TESTS FAIL</fail>
+		<echo>TEST COMPLETE</echo>
+	</target>
+
+	<target name="opera-tests-suite">
+		<exec executable="${OPERA}" failonerror="false" resultproperty="RETURN-CODE">
+			<arg value="${FILE}" />
+		</exec>
+		<fail if="${RETURN-CODE}">TESTS FAIL</fail>
+		<echo>TEST COMPLETE</echo>
+	</target>
+
+	<target name="safari-tests-suite">
+		<exec executable="${SAFARI}" failonerror="false" resultproperty="RETURN-CODE">
+			<arg value="${FILE}" />
+		</exec>
+		<fail if="${RETURN-CODE}">TESTS FAIL</fail>
+		<echo>TEST COMPLETE</echo>
+	</target>
+
+	<target name="deploy-tests-suite">
+		<jar destfile="${WAR}">
+			<zipfileset dir="." includes="tests-suite-index.html" fullpath="index.html" />
+			<zipfileset dir="." includes="styles.css" prefix="css" />
+
+			<zipfileset dir="../client/src/" includes="**/*.js" prefix="src" />
+			<zipfileset dir="src/" includes="**/*.js" prefix="src" />
+
+			<zipfileset dir="." includes="web.xml" prefix="WEB-INF" />
+		</jar>
+		<copy file="${WAR}" todir="${CONTAINER}" />
+	</target>
+</project>

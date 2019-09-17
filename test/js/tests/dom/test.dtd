@@ -1,0 +1,10 @@
+<!ELEMENT root (person)*>
+
+<!ELEMENT person (name,surname)>
+<!ATTLIST person id ID #REQUIRED>
+
+<!ELEMENT name (#PCDATA)>
+<!ATTLIST name id ID #REQUIRED>
+
+<!ELEMENT surname (#PCDATA)>
+<!ATTLIST surname id ID #REQUIRED>

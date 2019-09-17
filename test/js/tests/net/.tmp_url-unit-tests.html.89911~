@@ -1,0 +1,33 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <title>j(s)-lib Types Unit Tests</title>
+
+		<link href="../../../../styles.css" rel="stylesheet" type="text/css" />
+
+		<script src="../TestCase.js" type="text/javascript"></script>
+     	<script src="../../../../../client/src/js/lang/Log.js" type="text/javascript"></script>
+     	<script src="../../../../../client/src/js/lang/Operator.js" type="text/javascript"></script>
+     	<script src="../../../../../client/src/js/lang/Object.js" type="text/javascript"></script>
+     	<script src="../../../../../client/src/js/lang/Exception.js" type="text/javascript"></script>
+     	<script src="../../../../../client/src/js/lang/AssertException.js" type="text/javascript"></script>
+     	<script src="../../../../../client/src/js/lang/NOP.js" type="text/javascript"></script>
+     	<script src="../../../../../client/src/js/ua/Engine.js" type="text/javascript"></script>
+     	<script src="../../../../../client/src/js/lang/Types.js" type="text/javascript"></script>
+     	<script src="../../../../../client/src/js/util/Strings.js" type="text/javascript"></script>
+     	<script src="../../../../../client/src/js/util/Collection.js" type="text/javascript"></script>
+     	<script src="../../../../../client/src/js/util/Map.js" type="text/javascript"></script>
+     	<script src="../../../../../client/src/js/util/List.js" type="text/javascript"></script>
+     	<script src="../../../../../client/src/js/event/CustomEvents.js" type="text/javascript"></script>
+     	<script src="../../../../../client/src/js/ua/Window.js" type="text/javascript"></script>
+     	<script src="../../../../../client/src/js/ua/Cookie.js" type="text/javascript"></script>
+     	<script src="../../../../../client/src/js/ua/Regional.js" type="text/javascript"></script>
+     	<script src="../../../../../client/src/js/net/URL.js" type="text/javascript"></script>
+
+        <script src="UrlUnitTests.js" type="text/javascript"></script>
+    </head>
+    <body>
+    	<div id="scratch-area"></div>
+    </body>
+</html>

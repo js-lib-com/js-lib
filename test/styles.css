@@ -1,0 +1,26 @@
+#scratch-area {
+    width: 400px;
+    height: 400px;
+    border: solid 1px black;
+    position: fixed;
+    top: 100px;
+    right: 100px;
+    padding: 4px;
+}
+
+.report td {
+    padding: 0px 4px;
+    font-weight: bold;
+}
+
+#passed-tests {
+    color: green;
+}
+
+#failed-tests {
+    color: red;
+}
+
+#tests-to-be-written {
+    color: blue;
+}

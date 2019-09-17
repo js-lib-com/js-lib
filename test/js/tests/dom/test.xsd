@@ -1,0 +1,18 @@
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+	<xsd:element name="root">
+		<xsd:complexType>
+			<xsd:sequence>
+				<xsd:element name="name">
+					<xsd:complexType>
+						<xsd:attribute name="id" type="xsd:ID" use="required" />
+					</xsd:complexType>
+				</xsd:element>
+				<xsd:element name="surname">
+					<xsd:complexType>
+						<xsd:attribute name="id" type="xsd:ID" use="required" />
+					</xsd:complexType>
+				</xsd:element>
+			</xsd:sequence>
+		</xsd:complexType>
+	</xsd:element>
+</xsd:schema>

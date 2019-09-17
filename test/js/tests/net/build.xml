@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="Net Integration Tests" default="deploy">
+	<property name="WAR" value="net-tests.war" />
+	<property name="CONTAINER" value="D:\jvm\tomcat-7.0.30\webapps" />
+
+	<target name="deploy">
+		<jar destfile="${WAR}">
+			<zipfileset dir="." includes="xhr-integration-tests.html" fullpath="index.html" />
+
+			<zipfileset dir="../../../../" includes="styles.css" prefix="css" />
+
+			<zipfileset dir=".." includes="TestCase.js" prefix="js" />
+			<zipfileset dir="../../../../src/" includes="legacy.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/lang/" includes="Log.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/lang/" includes="Operator.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/lang/" includes="Object.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/lang/" includes="JSON.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/lang/" includes="Exception.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/lang/" includes="AssertException.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/lang/" includes="IllegalStateException.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/lang/" includes="NOP.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/lang/" includes="Types.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/lang/" includes="Class.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/lang/" includes="Uniterator.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/ua/" includes="Engine.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/ua/" includes="System.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/util/" includes="Cache.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/util/" includes="AbstractTimer.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/util/" includes="Timeout.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/util/" includes="Timer.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/util/" includes="Strings.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/util/" includes="Arrays.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/util/" includes="Collection.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/util/" includes="Map.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/util/" includes="List.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/util/" includes="ID.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/util/" includes="UUID.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/event/" includes="TargetNode.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/event/" includes="Types.js" fullpath="js/EventTypes.js" />
+			<zipfileset dir="../../../../src/js/event/" includes="Handler.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/event/" includes="Event.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/event/" includes="DomEvents.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/event/" includes="CustomEvents.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/format/" includes="Factory.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/net/" includes="URL.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/net/" includes="Method.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/dom/template" includes="OperatorFactory.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/dom/template" includes="OperatorsList.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/dom/template" includes="Template.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/dom/" includes="Builder.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/dom/" includes="Content.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/dom/" includes="Template.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/dom/" includes="Node.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/dom/" includes="Style.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/dom/" includes="Document.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/dom/" includes="Element.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/dom/" includes="EList.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/dom/" includes="ControlsList.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/dom/" includes="Control.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/dom/" includes="FileInput.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/dom/" includes="Form.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/dom/" includes="IFrame.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/ua/" includes="Window.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/ua/" includes="Cookie.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/ua/" includes="Regional.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/net/" includes="AsyncRequest.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/net/" includes="XHR.js" prefix="js" />
+			<zipfileset dir="../../../../src/js/net/" includes="ReadyState.js" prefix="js" />
+			<zipfileset dir="../../../../src/" includes="ie9.js" prefix="js" />
+			<zipfileset dir="../../../../src/" includes="ie8.js" prefix="js" />
+			<zipfileset dir="." includes="XhrIntegrationTests.js" prefix="js" />
+
+			<zipfileset dir="." includes="web.xml" prefix="WEB-INF" />
+			<zipfileset dir="../../../../bin" includes="js/tests/net/*.class" prefix="WEB-INF/classes" />
+		</jar>
+		<copy file="${WAR}" todir="${CONTAINER}" />
+	</target>
+</project>
