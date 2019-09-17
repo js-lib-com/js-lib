@@ -1,0 +1,7 @@
+<!-- a class field is accessed by class name and dot -->
+<!-- it is a variable that holds the result of expression evaluation -->
+<!-- note that evaluation occurs at script loading phase and can alter dependencies tree -->
+<!-- also, dependencies introduced by this expression evaluation are strict -->
+<class-field-declaration> :== <apidoc> <class-name> "." <member-name> "=" <expression> ";"
+
+<!-- expression is standard ECMAScript related construct -->

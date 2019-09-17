@@ -1,0 +1,4 @@
+<!-- introduce a package in a compilation unit -->
+<!-- should be first construct on top of compilation unit -->
+<!-- it is an invocation of $package pseudo-operator -->
+<package-statement> ::= "$package" "(" <package-name> ")" ";"

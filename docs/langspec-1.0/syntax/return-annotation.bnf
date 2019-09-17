@@ -1,0 +1,3 @@
+<!-- method returned value -->
+<!-- specifies returned type and optional description -->
+<return-annotation> :== "@return" <type-name> [<description>]

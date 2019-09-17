@@ -1,0 +1,3 @@
+<!-- in-comment documentation is mandatory for all type declarations -->
+<!-- a type declaration introduce a class or a utility -->
+<type-declaration> :== <class-declaration> | <utility-declaration> ";"

@@ -1,0 +1,8 @@
+<!-- a constant identifier must contains only upper case letter and underscore -->
+<!-- if starts with underscore is considered private -->
+<constant-identifier> :== ["_"] ("A..Z" "_")+
+
+<!--
+	Note: one may observe that allowed letters is limited to ASCII set.
+	This is a conscious decision. j(s)-language encourage writing portable code in English.
+-->

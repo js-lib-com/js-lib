@@ -1,0 +1,2 @@
+<!-- parameter should have letters and decimal digits but must start with lower case letter -->
+<param-identifier> :== "a..z" ("a..z" "A..Z" "0..9")*

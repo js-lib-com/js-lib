@@ -1,0 +1,20 @@
+<annotation> :==
+	<type-annotation> |
+	<access-annotation> |
+	<param-annotation> |
+	<return-annotation> |
+	<assert-annotation>
+
+<type-annotation> :== "@type" <type-name>
+<type-name> :== <built-in-type> | <class-name>
+<!-- ECMAScript built-in types: Object, Function, Array, String, Boolean, Number, Data, RegExp, Error -->
+
+<access-annotation> :== "@public" | "@protected" | "@private"
+
+<param-annotation> :== "@param" <type-name> <param-name> <description>
+<pram-name> :== "a..z" ("a..z" "A..Z" "0..9")*
+<description> :== <source-char> <description>
+
+<return-annotation> :== "@return" <type-name> <description>
+
+<assert-annotation> :== "@assert" <description>

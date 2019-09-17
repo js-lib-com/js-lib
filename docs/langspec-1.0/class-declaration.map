@@ -1,0 +1,38 @@
+js.net.Connection = function(url) {
+	this._DEFAULT_ROUTE = 'IPC';
+    this._url = url;
+};
+
+js.net.Connection.prototype =
+{
+    send: function(url, data) {
+        return null;
+    }
+};
+
+js.net.Connection.TIMEOUT = 1000;
+js.net.Connection.status = 'OPENED';
+
+js.net.Connection.config = function(cfg) {
+    return;
+};
+
+public class js.net.Connection {
+	private static final Number TIMEOUT = 1000;
+	private static String status = "OPENED";
+
+	private static void config(Unknown cfg) {
+		return;
+	}
+
+	private final String _DEFAULT_ROUTE = "IPC";
+	private Object _url;
+
+	public Connection(Object url) {
+		this._url = url;
+	}
+
+	public void send(Object url, Object data) {
+		return null;
+	}
+};

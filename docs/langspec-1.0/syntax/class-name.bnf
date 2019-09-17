@@ -1,0 +1,2 @@
+<!-- class name always contains package -->
+<class-name> :== <package-name> "." <class-identifier>

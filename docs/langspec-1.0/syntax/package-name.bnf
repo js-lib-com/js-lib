@@ -1,0 +1,2 @@
+<!-- a package name is a list of one or more package identifiers separated by dot -->
+<package-name> :== <package-identified> | (<package-name> "." <package-identified>)

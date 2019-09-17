@@ -1,0 +1,3 @@
+<!-- a member name is a constant or member identifier optional prefixed by private mark -->
+<!-- if a member name starts with underscore is considered private -->
+<member-name> :== <constant-identifier> | <member-identifier>

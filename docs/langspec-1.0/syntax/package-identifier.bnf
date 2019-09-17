@@ -1,0 +1,7 @@
+<!-- a package identifier may contain only lower case letters and decimal digits but should start with letter -->
+<package-identifier> :== "a..z" ("a..z" "0..9")*
+
+<!--
+	Note: one may observe that allowed letters is limited to ASCII set.
+	This is a conscious decision. j(s)-language encourage writing portable code in English.
+-->

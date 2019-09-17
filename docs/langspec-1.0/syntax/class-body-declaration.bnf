@@ -1,0 +1,12 @@
+<!-- reusable code -->
+<class-body-declaration> :==
+
+	<class-name> "." "prototype" "="
+	"{"
+		<!-- instance constant are shared between all instances and accessed via dot notation -->
+		(<constant-declaration> ",")*
+
+		<!-- last instance method declaration has no comma -->
+		(<method-declaration> [","])+
+
+	"}" ";"

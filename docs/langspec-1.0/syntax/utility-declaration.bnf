@@ -1,0 +1,11 @@
+<utility-declaration> :==
+
+	<apidoc>
+
+	<class-name> "=" "{"
+
+		<constant-declaration>*
+
+		<method-declaration>+
+
+	"}" ";"

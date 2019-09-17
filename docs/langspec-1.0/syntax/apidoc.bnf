@@ -1,0 +1,2 @@
+<!-- in-comment documentation has a start and end mark and some free text -->
+<apidoc> :== "/**" <comment-chars>* "*/"

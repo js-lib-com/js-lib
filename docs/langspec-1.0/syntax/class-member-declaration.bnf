@@ -1,0 +1,2 @@
+<!-- a class member is either a class field or a class method -->
+<class-member-declaration> :== <class-field-declaration> | <class-method-declaration>

@@ -1,0 +1,33 @@
+<compilation-unit> :== <package-statement> <type-declaration> <inner-type-declaration>* <legacy-statement>*
+
+<type-declaration> :== <class-declaration> | <utility-declaration>
+<inner-type-declaration> :== <inner-class-declaration> | <inner-utility-declaration>
+
+<class-declaration> :== <constructor-declaration> <class-member-declaration>* <class-body-declaration> <extends-statement> ";"
+<constructor-declaration> :== <doc-comment> <class-name> "=" "function" "(" [<parameter-list>] ")" "{" <statement-block> "}" ";"
+<class-body-declaration> :== <class-name> "." "prototype" "=" "{" (<constant-declaration> ",")* (<method-declaration> [","])+ "}" ";"
+
+<utility-declaration> :== <doc-comment> <class-name> "=" "{" (<constant-declaration> ",")* (<method-declaration> [","])+ "}" ";"
+<inner-utility-declaration> :== <doc-comment> <inner-class-name> "=" "{" (<constant-declaration> ",")* (<method-declaration> [","])+ "}" ";"
+
+<class-member-declaration> :== <class-field-declaration> | <class-method-declaration>
+<class-field-declaration> :== <doc-comment> <class-name> "." <member-name> "=" <expression> ";"
+<class-method-declaration> := <doc-comment> <class-name> "." <member-name> "=" "function" "(" [<parameter-list>] ")" "{" <statement-block> "}" ";"
+
+<constant-declaration> :== <doc-comment> <constant-identifier> ":" <expression>
+<method-declaration> :== <doc-comment> <member-name> ":" "function" "(" [<parameter-list>] ")" "{" <statement-block> "}"
+
+<package-statement> ::= "$package" "(" <package-name> ")" ";"
+<extends-statement> :== "$extends" "(" <class-name> "," <class-name> ")" ";"
+<legacy-statement> :== "$legacy" "(" <boolean-expression> "," "function" "(" ")" "{" <statement-block> "}" ")" ";"
+
+<class-name> :== <package-name> "." <class-identifier>
+<inner-class-name> :== <package-name> "." <class-identifier> "." <class-identifier>
+<package-name> :== <package-identified> | (<package-name> "." <package-identified>)
+<member-name> :== <constant-identifier> | <member-identifier>
+
+<package-identifier> :== "a..z" ("a..z" "0..9")*
+<class-identifier> :== ["_"] "A..Z" ("a..z" "A..Z" "0..9")*
+<constant-identifier> :== ["_"] ("A..Z" "_")+
+<member-identifier> :== ["_"] "a..z" ("a..z" "A..Z" )*
+<doc-comment> :== "/**" "... text ... " "*/"

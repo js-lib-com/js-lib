@@ -1,0 +1,19 @@
+<class-declaration> :== <constructor-declaration> <class-member-declaration>* <class-body-declaration> <extends-statement> ";"
+
+<constructor-declaration> :== <apidoc> <class-name> "=" "function" "(" [<parameter-list>] ")" "{" <statement-block> "}" ";"
+
+
+
+<class-field-declaration> :== <field-apidoc> <class-name> "." <member-name> "=" <expression> ";"
+
+<apidoc> :== "/**" <comment-chars>* "*/"
+<comment-chars> :== (<source-char> but not asterisk) <comment-chars>
+<!-- source character is defined by ECMAScript as any Unicode code unit -->
+
+<field-apidoc> :== "/**" <comment-chars>* <type-annotation> [<access-annotation>] <comment-chars>* "*/"
+
+<type-annotation> :== "@type" <type-name>
+<type-name> :== <built-in> | <class-name>
+<!-- ECMAScript built-in types: Object, Function, Array, String, Boolean, Number, Data, RegExp, Error -->
+
+<access-annotation> :== "@public" | "@protected" | "@private"

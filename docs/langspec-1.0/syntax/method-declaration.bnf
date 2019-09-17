@@ -1,0 +1,11 @@
+<method-declaration> :==
+
+	<apidoc>
+
+	<member-name> ":" "function" "(" [<parameter-list>] ")" "{"
+
+		<statement-block>
+
+	"}"
+
+<!-- parameter list and statement block are standard ECMAScript related constructs -->

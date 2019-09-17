@@ -1,0 +1,2 @@
+<!-- describe assertion made by statement block of a constructor or method -->
+<assert-annotation> :== "@assert" <description>

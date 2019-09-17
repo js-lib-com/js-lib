@@ -1,0 +1,4 @@
+<!-- a class identifier may contain only letters and decimal digits but start with upper case -->
+<!-- a top level class can't be private so underscore is no accepted -->
+<!-- anyway, inner class can be -->
+<class-identifier> :== ["_"] "A..Z" ("a..z" "A..Z" "0..9")*

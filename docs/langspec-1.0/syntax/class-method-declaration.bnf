@@ -1,0 +1,12 @@
+<!-- class method is a ECMAScript function declared in class name scope -->
+<class-method-declaration> :=
+
+	<apidoc>
+
+	<class-name> "." <member-name> "=" "function" "(" [<parameter-list>] ")" "{"
+
+		<statement-block>
+
+	"}" ";"
+
+<!-- parameter list and statement block are standard ECMAScript related constructs -->

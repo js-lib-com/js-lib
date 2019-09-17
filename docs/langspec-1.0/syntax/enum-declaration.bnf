@@ -1,0 +1,8 @@
+<enum-declaration> :==
+
+	<class-name> "=" "{"
+
+		<apidoc>
+		<constant-identifier> ":" <literal> [","]
+
+	"}" ";"

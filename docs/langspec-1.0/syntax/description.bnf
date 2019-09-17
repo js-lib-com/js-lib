@@ -1,0 +1,4 @@
+<!-- content composed from source characters -->
+<!-- used by annotations -->
+<description> :== <source-char> <description>
+<!-- source character is defined by ECMAScript as any Unicode code unit -->

@@ -1,0 +1,15 @@
+<enum-declaration> :== <doc-comment> <class-name> "=" "{" <doc-comment> <constant-identifier> ":" <literal> [","] "}" ";"
+
+<class-name> :== <package-name> "." <class-identifier>
+<package-name> :== <package-identified> | (<package-name> "." <package-identified>)
+
+<package-identifier> :== "a..z" ("a..z" "0..9")*
+<class-identifier> :== ["_"] "A..Z" ("a..z" "A..Z" "0..9")*
+<constant-identifier> :== ["_"] ("A..Z" "_")+
+
+<doc-comment> :== "/**" <comment-chars> "*/"
+<comment-chars> :== (<source-char> but not asterisk) <comment-chars>
+<!-- source character is defined by ECMAScript as any Unicode code unit -->
+
+<literal> :== <numeric-literal> | <string-literal> | <rexexp-literal>
+<!-- numeric, string and regular expression literals are defined in ECMAScript #7.8 -->

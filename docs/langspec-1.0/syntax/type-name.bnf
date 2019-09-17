@@ -1,0 +1,3 @@
+<!-- ECMAScript built-in types or defined class name -->
+<type-name> :== <built-in-type> | <class-name>
+<!-- ECMAScript built-in types: Object, Function, Array, String, Boolean, Number, Data, RegExp, Error -->

@@ -1,0 +1,18 @@
+<!-- class has a constructor, optional class members, instance members and mandatory extends statement -->
+<!-- exception is js.lang.Object - j(s)-lib object hierarchy root that has no extends statement -->
+<class-declaration> :==
+
+	<!-- every class has exactly one constructor -->
+	<constructor-declaration>
+
+	<!-- class members are static in that they are invoked without instances -->
+	<!-- they have no this pointer -->
+	<class-member-declaration>*
+
+	<!-- class body contains members shared between all instances -->
+	<!-- for this reason fields are allowed only as constant -->
+	<class-body-declaration>
+
+	<!-- every class must extends some existing one -->
+	<!-- all classes have as common ancestor Object -->
+	<extends-statement>

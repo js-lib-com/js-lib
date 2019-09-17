@@ -1,0 +1,8 @@
+<!-- a member identifier has only letters but must start with lower case -->
+<!-- if starts with underscore is considered private -->
+<member-identifier> :== ["_"] "a..z" ("a..z" "A..Z" )*
+
+<!--
+	Note: one may observe that allowed letters is limited to ASCII set.
+	This is a conscious decision. j(s)-language encourage writing portable code in English.
+-->

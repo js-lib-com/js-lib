@@ -1,0 +1,7 @@
+<!-- instance constant is shared between all instances and accessed by dot notation -->
+<!-- constant is assigned a value resulted from expression evaluation -->
+<!-- note that evaluation occurs at script loading phase and can alter dependencies tree -->
+<!-- also, dependencies introduced by this expression evaluation are strict -->
+<constant-declaration> :== <apidoc> <constant-identifier> ":" <expression>
+
+<!-- expression is standard ECMAScript related construct -->

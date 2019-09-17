@@ -1,0 +1,3 @@
+<legacy-statement> :== "$legacy" "(" <boolean-expression> "," "function" "(" ")" "{"
+			<statement-block>
+	"}" ")" ";"

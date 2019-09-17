@@ -1,0 +1,3 @@
+<!-- comment may contain any source character less asterisk used as end mark -->
+<comment-chars> :== (<source-char> but not asterisk) <comment-chars>
+<!-- source character is defined by ECMAScript as any Unicode code unit -->

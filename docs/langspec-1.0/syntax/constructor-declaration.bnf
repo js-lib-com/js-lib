@@ -1,0 +1,14 @@
+<!-- a constructor is a function that initializes an instance -->
+<constructor-declaration> :==
+
+	<apidoc>
+
+	<!-- constructor function name is the class name itself -->
+	<!-- it is a script standard function declaration -->
+	<class-name> "=" "function" "(" [<parameter-list>] ")" "{"
+
+		<statement-block>
+
+	"}" ";"
+
+<!-- parameter list and statement block are standard ECMAScript related constructs -->

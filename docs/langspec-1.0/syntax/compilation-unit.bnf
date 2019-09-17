@@ -1,0 +1,16 @@
+<!-- a compilation unit is a script source file -->
+<compilation-unit> :==
+
+	<!-- one single package statement at the top of compilation unit -->
+	<package-statement>
+
+	<!-- a compilation unit has exactly one type declaration -->
+	<type-declaration>
+
+	<!-- optional, a number of inner type declaration -->
+	<!-- these types are declared inside compilation unit type scope -->
+	<inner-type-declaration>*
+
+	<!-- optional, a number of legacy statements -->
+	<!-- adapt type declaration(s) from this compilation unit to non-standard environment -->
+	<legacy-statement>*
