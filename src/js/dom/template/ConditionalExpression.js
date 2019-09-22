@@ -89,49 +89,27 @@ js.dom.template.ConditionalExpression = function (content, scope, expression) {
     this._expression = expression;
 
     /**
-	 * Evaluated value negation flag. If true {@link #evaluate(Object)} applies boolean <code>not</code> on returned
-	 * value. This flag is true if expression starts with exclamation mark.
-	 * 
-	 * @type Boolean
-	 */
-    this._not = false;
-
-    /**
-	 * The property path of the content value to evaluate this conditional expression against. See package API for
-	 * object property path description. This value is extracted from given expression and is the only mandatory
-	 * component.
-	 * 
-	 * @type String
-	 */
-    this._propertyPath = null;
-
-    /**
-	 * Optional expression operator opcode, default to {@link js.dom.template.ConditionalExpression.Opcode#NOT_EMPTY}.
-	 * This opcode is used to select the proper expression {@link js.dom.template.ConditionalExpression.Processor}.
-	 * 
-	 * @type js.dom.template.ConditionalExpression.Opcode
-	 */
-    this._opcode = js.dom.template.ConditionalExpression.Opcode.NONE;
-
-    /**
-	 * Operator operand, mandatory only if {@link js.dom.template.ConditionalExpression.Processor#acceptNullOperand()}
-	 * requires it. This is the second term of expression evaluation logic; the first is the content value determined by
-	 * property path.
-	 * 
-	 * @type String
-	 */
-    this._operand = null;
-
-    /**
 	 * Expression evaluation value.
 	 * 
 	 * @type Boolean
 	 */
     this._value = false;
 
-    this._parse();
-    $assert(this._propertyPath === "." || js.lang.Types.isObject(scope), "js.dom.template.ConditionalExpression#_exec", "Scope is not an object.");
-    this._value = this._evaluate(content.getValue(scope, this._propertyPath));
+    this._statements = [];
+    // parse expression and store statements
+    this._parse(expression);
+
+    for (var i = 0, statement; i < this._statements.length; ++i) {
+        statement = this._statements[i];
+        if (statement.opcode === js.dom.template.ConditionalExpression.Opcode.NONE) {
+            continue;
+        }
+        $assert(statement.propertyPath === "." || js.lang.Types.isObject(scope), "js.dom.template.ConditionalExpression#_exec", "Scope is not an object.");
+        this._value = this._evaluate(statement, content.getValue(scope, statement.propertyPath));
+        if (!this._value) {
+            break;
+        }
+    }
 };
 
 js.dom.template.ConditionalExpression.prototype = {
@@ -148,31 +126,60 @@ js.dom.template.ConditionalExpression.prototype = {
 	 * Parse stored expression string and initialize instance state. This method is in fact a morphological parser, i.e.
 	 * a lexer. It just identifies expression components and initialize internal state. Does not check validity; all
 	 * <em>insanity</em> tests are performed by {@link #_evaluate(Object)} counterpart.
+	 * 
+	 * @param String expression conditional expression.
 	 */
-    _parse: function () {
-        if (this._expression.charAt(0) === '!') {
-            this._not = true;
-            this._expression = this._expression.substring(1);
-        }
+    _parse: function (expression) {
+        var State = js.dom.template.ConditionalExpression.State;
+        var Opcode = js.dom.template.ConditionalExpression.Opcode;
 
-        var builder = "";
-        var state = js.dom.template.ConditionalExpression.State.PROPERTY_PATH;
+        var builder; // leave builder undefined since it is prepared on every new statement 
+        var statement; // reference to current statement from this._statements[statementsIndex]
+        var statementsIndex = -1; // on every new statement index is incremented so -1 prepares for first increment
+        var state = State.STATEMENT;
 
-        for (var i = 0, c; i < this._expression.length; ++i) {
-            c = this._expression.charAt(i);
+        for (var i = 0, c; i < expression.length; ++i) {
+            c = expression.charAt(i);
+
             switch (state) {
-                case js.dom.template.ConditionalExpression.State.PROPERTY_PATH:
+                case State.STATEMENT:
+                    builder = "";
+                    ++statementsIndex;
+
+                    this._statements[statementsIndex] = new js.dom.template.ConditionalExpression.Statement();
+                    statement = this._statements[statementsIndex];
+
+                    state = State.PROPERTY_PATH;
+                    if (c === '!') {
+                        statement.not = true;
+                        break;
+                    }
+                // if not negation character fall through next case
+
+                case State.PROPERTY_PATH:
                     if (this._isPropertyPathChar(c)) {
                         builder += c;
                         break;
                     }
-                    this._propertyPath = builder;
+                    statement.propertyPath = builder;
+
+                    if (c === ';') {
+                        statement.opcode = Opcode.NOT_EMPTY;
+                        state = State.STATEMENT;
+                        break;
+                    }
+
                     builder = "";
-                    this._opcode = js.dom.template.ConditionalExpression.Opcode.forChar(c);
-                    state = js.dom.template.ConditionalExpression.State.OPERAND;
+                    statement.opcode = Opcode.forChar(c);
+                    state = State.OPERAND;
                     break;
 
-                case js.dom.template.ConditionalExpression.State.OPERAND:
+                case State.OPERAND:
+                    if (c === ';') {
+                        statement.operand = builder;
+                        state = State.STATEMENT;
+                        break;
+                    }
                     builder += c;
                     break;
 
@@ -181,15 +188,15 @@ js.dom.template.ConditionalExpression.prototype = {
             }
         }
 
-        if (state == js.dom.template.ConditionalExpression.State.PROPERTY_PATH) {
-            this._opcode == js.dom.template.ConditionalExpression.Opcode.NONE;
-            this._propertyPath = builder;
-            this._opcode = js.dom.template.ConditionalExpression.Opcode.NOT_EMPTY;
+        // completes current statement properties when all characters from expression was read
+        if (state == State.PROPERTY_PATH) {
+            statement.propertyPath = builder;
+            statement.opcode = Opcode.NOT_EMPTY;
         }
         else {
             if (builder) {
                 // operand string builder may be empty if operand is missing, e.g. 'value='
-                this._operand = builder;
+                statement.operand = builder;
             }
         }
     },
@@ -199,7 +206,7 @@ js.dom.template.ConditionalExpression.prototype = {
 	 * 
 	 * @type RegExp
 	 */
-    JAVA_IDENTIFIER: /[a-zA-Z0-9._$]/,
+    JAVA_IDENTIFIER: /[a-zA-Z0-9._$-]/,
 
     /**
 	 * Test if character is a valid property path character. Returns true if <code>char</code> is letter, digit, dot,
@@ -219,35 +226,36 @@ js.dom.template.ConditionalExpression.prototype = {
 	 * method takes care to test internal state consistency and returns false if bad; so an invalid expression evaluates
 	 * to false.
 	 * 
+     * @param js.dom.template.ConditionalExpression.Statement statement parsed statement to evaluate,
 	 * @param Object object value to evaluate, possible null.
 	 * @return Boolean true if this conditional expression is positively evaluated.
 	 * @assert <code>object</code> argument is not undefined or null.
 	 */
-    _evaluate: function (object) {
+    _evaluate: function (statement, object) {
         $assert(typeof object !== "undefined", "js.dom.template.ConditionalExpression#evaluate", "Object argument is undefined or null.");
 
-        if (this._opcode === js.dom.template.ConditionalExpression.Opcode.INVALID) {
+        if (statement.opcode === js.dom.template.ConditionalExpression.Opcode.INVALID) {
             $warn("js.dom.template.ConditionalExpression#evaluate", "Invalid conditional expression |%s|. Not supported opcode.", this._expression);
             return false;
         }
-        var processor = this._getProcessor(this._opcode);
+        var processor = this._getProcessor(statement.opcode);
 
-        if (this._operand === null && !processor.acceptNullOperand()) {
-            $warn("js.dom.template.ConditionalExpression#evaluate", "Invalid conditional expression |%s|. Missing mandatory operand for operator |%s|.", this._expression, this._opcode);
+        if (statement.operand === null && !processor.acceptNullOperand()) {
+            $warn("js.dom.template.ConditionalExpression#evaluate", "Invalid conditional expression |%s|. Missing mandatory operand for operator |%s|.", this._expression, statement.opcode);
             return false;
         }
         if (!processor.acceptValue(object)) {
-            $warn("js.dom.template.ConditionalExpression#evaluate", "Invalid conditional expression |%s|. Operator |%s| does not accept value type |%s|.", this._expression, this._opcode, object);
+            $warn("js.dom.template.ConditionalExpression#evaluate", "Invalid conditional expression |%s|. Operator |%s| does not accept value type |%s|.", this._expression, statement.opcode, object);
             return false;
         }
-        if (this._operand !== null && !js.dom.template.ConditionalExpression.OperandFormatValidator.isValid(object, this._operand)) {
+        if (statement.operand !== null && !js.dom.template.ConditionalExpression.OperandFormatValidator.isValid(object, statement.operand)) {
             $warn("js.dom.template.ConditionalExpression#evaluate", "Invalid conditional expression |%s|. Operand does not match value type |%s|.", this._expression, object);
             return false;
         }
 
-        var value = processor.evaluate(object, this._operand);
+        var value = processor.evaluate(object, statement.operand);
         $assert(js.lang.Types.isBoolean(value), "js.dom.template.ConditionalExpression#evaluate", "Operator processor returned value is not boolean.");
-        return this._not ? !value : value;
+        return statement.not ? !value : value;
     },
 
     /**
@@ -266,23 +274,24 @@ js.dom.template.ConditionalExpression.prototype = {
 	 */
     _getProcessor: function (opcode) {
         var processor = this._processors[opcode];
+        var ConditionalExpression = js.dom.template.ConditionalExpression;
 
         if (typeof processor === "undefined") {
             switch (opcode) {
-                case js.dom.template.ConditionalExpression.Opcode.NOT_EMPTY:
-                    processor = new js.dom.template.ConditionalExpression.NotEmptyProcessor();
+                case ConditionalExpression.Opcode.NOT_EMPTY:
+                    processor = new ConditionalExpression.NotEmptyProcessor();
                     break;
 
-                case js.dom.template.ConditionalExpression.Opcode.EQUALS:
-                    processor = new js.dom.template.ConditionalExpression.EqualsProcessor();
+                case ConditionalExpression.Opcode.EQUALS:
+                    processor = new ConditionalExpression.EqualsProcessor();
                     break;
 
-                case js.dom.template.ConditionalExpression.Opcode.LESS_THAN:
-                    processor = new js.dom.template.ConditionalExpression.LessThanProcessor();
+                case ConditionalExpression.Opcode.LESS_THAN:
+                    processor = new ConditionalExpression.LessThanProcessor();
                     break;
 
-                case js.dom.template.ConditionalExpression.Opcode.GREATER_THAN:
-                    processor = new js.dom.template.ConditionalExpression.GreaterThanProcessor();
+                case ConditionalExpression.Opcode.GREATER_THAN:
+                    processor = new ConditionalExpression.GreaterThanProcessor();
                     break;
 
                 default:
@@ -348,6 +357,42 @@ js.dom.template.ConditionalExpression.Opcode = {
     GREATER_THAN: 5
 };
 
+js.dom.template.ConditionalExpression.Statement = function () {
+    /**
+	 * Evaluated value negation flag. If true {@link #evaluate(Object)} applies boolean <code>not</code> on returned
+	 * value. This flag is true if expression starts with exclamation mark.
+	 * 
+	 * @type Boolean
+	 */
+    this.not = false;
+
+    /**
+	 * The property path of the content value to evaluate this conditional expression against. See package API for
+	 * object property path description. This value is extracted from given expression and is the only mandatory
+	 * component.
+	 * 
+	 * @type String
+	 */
+    this.propertyPath = null;
+
+    /**
+	 * Optional expression operator opcode, default to {@link js.dom.template.ConditionalExpression.Opcode#NOT_EMPTY}.
+	 * This opcode is used to select the proper expression {@link js.dom.template.ConditionalExpression.Processor}.
+	 * 
+	 * @type js.dom.template.ConditionalExpression.Opcode
+	 */
+    this.opcode = js.dom.template.ConditionalExpression.Opcode.NONE;
+
+    /**
+	 * Operator operand, mandatory only if {@link js.dom.template.ConditionalExpression.Processor#acceptNullOperand()}
+	 * requires it. This is the second term of expression evaluation logic; the first is the content value determined by
+	 * property path.
+	 * 
+	 * @type String
+	 */
+    this.operand = null;
+};
+
 /**
  * Returns the opcode encoded by given character code. Current implementation encode opcode with a single character. If
  * given <code>code</code> is not supported returns INVALID.
@@ -374,20 +419,17 @@ js.dom.template.ConditionalExpression.Opcode.forChar = function (code) {
  * @since 1.8
  */
 js.dom.template.ConditionalExpression.State = {
-    /**
-	 * Neutral value.
-	 */
+    /** Neutral value. */
     NONE: 0,
 
-    /**
-	 * Building property path.
-	 */
-    PROPERTY_PATH: 1,
+    /** Start of a statement. */
+    STATEMENT: 1,
 
-    /**
-	 * Building operand.
-	 */
-    OPERAND: 2
+    /** Building property path. */
+    PROPERTY_PATH: 2,
+
+    /** Building operand. */
+    OPERAND: 3
 };
 
 /**

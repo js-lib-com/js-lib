@@ -5082,18 +5082,22 @@ $package("js.dom.template");
 js.dom.template.ConditionalExpression = function (content, scope, expression) {
     this._expression = expression;
 
-    this._not = false;
-
-    this._propertyPath = null;
-
-    this._opcode = js.dom.template.ConditionalExpression.Opcode.NONE;
-
-    this._operand = null;
-
     this._value = false;
 
-    this._parse();
-    this._value = this._evaluate(content.getValue(scope, this._propertyPath));
+    this._statements = [];
+    // parse expression and store statements
+    this._parse(expression);
+
+    for (var i = 0, statement; i < this._statements.length; ++i) {
+        statement = this._statements[i];
+        if (statement.opcode === js.dom.template.ConditionalExpression.Opcode.NONE) {
+            continue;
+        }
+        this._value = this._evaluate(statement, content.getValue(scope, statement.propertyPath));
+        if (!this._value) {
+            break;
+        }
+    }
 };
 
 js.dom.template.ConditionalExpression.prototype = {
@@ -5101,30 +5105,57 @@ js.dom.template.ConditionalExpression.prototype = {
         return this._value;
     },
 
-    _parse: function () {
-        if (this._expression.charAt(0) === '!') {
-            this._not = true;
-            this._expression = this._expression.substring(1);
-        }
+    _parse: function (expression) {
+        var State = js.dom.template.ConditionalExpression.State;
+        var Opcode = js.dom.template.ConditionalExpression.Opcode;
 
-        var builder = "";
-        var state = js.dom.template.ConditionalExpression.State.PROPERTY_PATH;
+        var builder; // leave builder undefined since it is prepared on every new statement 
+        var statement; // reference to current statement from this._statements[statementsIndex]
+        var statementsIndex = -1; // on every new statement index is incremented so -1 prepares for first increment
+        var state = State.STATEMENT;
 
-        for (var i = 0, c; i < this._expression.length; ++i) {
-            c = this._expression.charAt(i);
+        for (var i = 0, c; i < expression.length; ++i) {
+            c = expression.charAt(i);
+
             switch (state) {
-                case js.dom.template.ConditionalExpression.State.PROPERTY_PATH:
+                case State.STATEMENT:
+                    builder = "";
+                    ++statementsIndex;
+
+                    this._statements[statementsIndex] = new js.dom.template.ConditionalExpression.Statement();
+                    statement = this._statements[statementsIndex];
+
+                    state = State.PROPERTY_PATH;
+                    if (c === '!') {
+                        statement.not = true;
+                        break;
+                    }
+                // if not negation character fall through next case
+
+                case State.PROPERTY_PATH:
                     if (this._isPropertyPathChar(c)) {
                         builder += c;
                         break;
                     }
-                    this._propertyPath = builder;
+                    statement.propertyPath = builder;
+
+                    if (c === ';') {
+                        statement.opcode = Opcode.NOT_EMPTY;
+                        state = State.STATEMENT;
+                        break;
+                    }
+
                     builder = "";
-                    this._opcode = js.dom.template.ConditionalExpression.Opcode.forChar(c);
-                    state = js.dom.template.ConditionalExpression.State.OPERAND;
+                    statement.opcode = Opcode.forChar(c);
+                    state = State.OPERAND;
                     break;
 
-                case js.dom.template.ConditionalExpression.State.OPERAND:
+                case State.OPERAND:
+                    if (c === ';') {
+                        statement.operand = builder;
+                        state = State.STATEMENT;
+                        break;
+                    }
                     builder += c;
                     break;
 
@@ -5132,70 +5163,71 @@ js.dom.template.ConditionalExpression.prototype = {
                     }
         }
 
-        if (state == js.dom.template.ConditionalExpression.State.PROPERTY_PATH) {
-            this._opcode == js.dom.template.ConditionalExpression.Opcode.NONE;
-            this._propertyPath = builder;
-            this._opcode = js.dom.template.ConditionalExpression.Opcode.NOT_EMPTY;
+        // completes current statement properties when all characters from expression was read
+        if (state == State.PROPERTY_PATH) {
+            statement.propertyPath = builder;
+            statement.opcode = Opcode.NOT_EMPTY;
         }
         else {
             if (builder) {
                 // operand string builder may be empty if operand is missing, e.g. 'value='
-                this._operand = builder;
+                statement.operand = builder;
             }
         }
     },
 
-    JAVA_IDENTIFIER: /[a-zA-Z0-9._$]/,
+    JAVA_IDENTIFIER: /[a-zA-Z0-9._$-]/,
 
     _isPropertyPathChar: function (char) {
         return this.JAVA_IDENTIFIER.test(char);
     },
 
-    _evaluate: function (object) {
-        if (this._opcode === js.dom.template.ConditionalExpression.Opcode.INVALID) {
+    _evaluate: function (statement, object) {
+        if (statement.opcode === js.dom.template.ConditionalExpression.Opcode.INVALID) {
             $warn("js.dom.template.ConditionalExpression#evaluate", "Invalid conditional expression |%s|. Not supported opcode.", this._expression);
             return false;
         }
-        var processor = this._getProcessor(this._opcode);
+        var processor = this._getProcessor(statement.opcode);
 
-        if (this._operand === null && !processor.acceptNullOperand()) {
-            $warn("js.dom.template.ConditionalExpression#evaluate", "Invalid conditional expression |%s|. Missing mandatory operand for operator |%s|.", this._expression, this._opcode);
+        if (statement.operand === null && !processor.acceptNullOperand()) {
+            $warn("js.dom.template.ConditionalExpression#evaluate", "Invalid conditional expression |%s|. Missing mandatory operand for operator |%s|.", this._expression, statement.opcode);
             return false;
         }
         if (!processor.acceptValue(object)) {
-            $warn("js.dom.template.ConditionalExpression#evaluate", "Invalid conditional expression |%s|. Operator |%s| does not accept value type |%s|.", this._expression, this._opcode, object);
+            $warn("js.dom.template.ConditionalExpression#evaluate", "Invalid conditional expression |%s|. Operator |%s| does not accept value type |%s|.", this._expression, statement.opcode, object);
             return false;
         }
-        if (this._operand !== null && !js.dom.template.ConditionalExpression.OperandFormatValidator.isValid(object, this._operand)) {
+        if (statement.operand !== null && !js.dom.template.ConditionalExpression.OperandFormatValidator.isValid(object, statement.operand)) {
             $warn("js.dom.template.ConditionalExpression#evaluate", "Invalid conditional expression |%s|. Operand does not match value type |%s|.", this._expression, object);
             return false;
         }
 
-        var value = processor.evaluate(object, this._operand);
-        return this._not ? !value : value;
+        var value = processor.evaluate(object, statement.operand);
+        return statement.not ? !value : value;
     },
 
     _processors: {},
 
     _getProcessor: function (opcode) {
         var processor = this._processors[opcode];
+        var ConditionalExpression = js.dom.template.ConditionalExpression;
 
         if (typeof processor === "undefined") {
             switch (opcode) {
-                case js.dom.template.ConditionalExpression.Opcode.NOT_EMPTY:
-                    processor = new js.dom.template.ConditionalExpression.NotEmptyProcessor();
+                case ConditionalExpression.Opcode.NOT_EMPTY:
+                    processor = new ConditionalExpression.NotEmptyProcessor();
                     break;
 
-                case js.dom.template.ConditionalExpression.Opcode.EQUALS:
-                    processor = new js.dom.template.ConditionalExpression.EqualsProcessor();
+                case ConditionalExpression.Opcode.EQUALS:
+                    processor = new ConditionalExpression.EqualsProcessor();
                     break;
 
-                case js.dom.template.ConditionalExpression.Opcode.LESS_THAN:
-                    processor = new js.dom.template.ConditionalExpression.LessThanProcessor();
+                case ConditionalExpression.Opcode.LESS_THAN:
+                    processor = new ConditionalExpression.LessThanProcessor();
                     break;
 
-                case js.dom.template.ConditionalExpression.Opcode.GREATER_THAN:
-                    processor = new js.dom.template.ConditionalExpression.GreaterThanProcessor();
+                case ConditionalExpression.Opcode.GREATER_THAN:
+                    processor = new ConditionalExpression.GreaterThanProcessor();
                     break;
 
                 default:
@@ -5226,6 +5258,16 @@ js.dom.template.ConditionalExpression.Opcode = {
     GREATER_THAN: 5
 };
 
+js.dom.template.ConditionalExpression.Statement = function () {
+    this.not = false;
+
+    this.propertyPath = null;
+
+    this.opcode = js.dom.template.ConditionalExpression.Opcode.NONE;
+
+    this.operand = null;
+};
+
 js.dom.template.ConditionalExpression.Opcode.forChar = function (code) {
     switch (code) {
         case '=':
@@ -5241,9 +5283,11 @@ js.dom.template.ConditionalExpression.Opcode.forChar = function (code) {
 js.dom.template.ConditionalExpression.State = {
     NONE: 0,
 
-    PROPERTY_PATH: 1,
+    STATEMENT: 1,
 
-    OPERAND: 2
+    PROPERTY_PATH: 2,
+
+    OPERAND: 3
 };
 
 js.dom.template.ConditionalExpression.Processor = {
