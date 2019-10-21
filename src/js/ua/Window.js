@@ -167,13 +167,6 @@ js.ua.Window._index = 0;
 
 js.ua.Window.prototype = {
 	/**
-	 * Page destroying confirmation message.
-	 * 
-	 * @type String
-	 */
-	_DESTROY_CONFIRM : "Please confirm you want to leave the page.",
-
-	/**
 	 * Create new child window. This method accept optional parameters used to build URL query and optional window
 	 * features as described by {@link js.ua.Window.Features}.
 	 * 
@@ -539,15 +532,19 @@ js.ua.Window.prototype = {
 		this._removeEventListener("beforeunload", js.ua.Window.prototype._beforeUnloadHandler);
 
 		var results = this._events.fire("pre-unload", this);
+		var message = "";
 		var preventUnload = false;
 		for (var i = 0; i < results.length; ++i) {
-			// event listener should return explicit false boolean in order to prevent unload
-			preventUnload |= (results[i] === false);
+			if(typeof results[i] === "string") {
+				preventUnload = true;
+				message += results[i];
+				message += "\r\n";
+			}
 		}
 
 		this._state = js.ua.Window.State.BEFORE_UNLOADED;
 		if (preventUnload) {
-			return this._DESTROY_CONFIRM;
+			return message;
 		}
 	},
 

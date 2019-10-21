@@ -926,112 +926,6 @@ $e = js.lang.Operator.$element;
 $l = js.lang.Operator.$list;
 
 // dollar name is used by jQuery; it can be configured to not but is not adviseable
-// refrain to use $package operator since is not yet defined
-(function () {
-    if (typeof js === "undefined") {
-        js = {};
-    }
-    if (typeof js.ua === "undefined") {
-        js.ua = {};
-    }
-})();
-
-js.ua.System = {
-    _ERROR_MESSAGE : "Temporary failure. Please refresh the page.",
-
-    print : function (message) {
-        if (typeof console !== "undefined") {
-            console.log(message.replace(/<br \/>/g, " "));
-        }
-    },
-
-    error : function (er) {
-        js.ua.System.print(js.ua.System._getErrorMessage(arguments));
-        js.ua.System.alert(this._ERROR_MESSAGE);
-    },
-
-    alert : function (message) {
-        if (arguments.length > 0) {
-            if (arguments.length > 1) {
-                message = $format(arguments);
-            }
-            window.setTimeout(function () {
-                window.alert(message);
-            }, 1);
-        }
-    },
-
-    toast : function (message) {
-        if (arguments.length > 0) {
-            if (arguments.length > 1) {
-                message = $format(arguments);
-            }
-            window.setTimeout(function () {
-                window.alert(message);
-            }, 1);
-        }
-    },
-
-    prompt : function (message, callback, scope) {
-        if (arguments.length > 0) {
-            if (arguments.length > 1) {
-                message = $format(arguments);
-            }
-            window.setTimeout(function () {
-                var prompt = window.prompt(message);
-                if (prompt === null) {
-                    // user cancel; convert to undefined
-                    prompt = undefined;
-                }
-                else {
-                    // user pressed OK
-                    if (prompt.length === 0) {
-                        // user OK but no input; convert to null
-                        prompt = null;
-                    }
-                }
-                callback.call(scope || window, prompt);
-            }, 1);
-        }
-    },
-
-    confirm : function (message, callback, scope) {
-        if (arguments.length > 0) {
-            if (arguments.length > 1) {
-                message = $format(arguments);
-            }
-            window.setTimeout(function () {
-                callback.call(scope || window, window.confirm(message));
-            }, 1);
-        }
-    },
-
-    _getErrorMessage : function (args) {
-        if (args[0] instanceof Error) {
-            var er = args[0];
-            var s = er.name;
-            if (er.message) {
-                s += ("\r\n" + er.message);
-            }
-            if(er.stack) {
-            	s += ("\r\n\r\n" + er.stack);
-            }
-            return s;
-        }
-        return $format(args);
-    }
-};
-
-(function () {
-    // Replace global error handler with with a more explicit one, if debugging active.
-    if (typeof __js_debug__ !== "undefined") {
-        js.ua.System.error = function (er) {
-            var s = js.ua.System._getErrorMessage(arguments);
-            js.ua.System.print(s);
-            js.ua.System.alert(s);
-        };
-    }
-})();
 $package("js.ua");
 
 js.ua.Engine = {
@@ -1522,8 +1416,6 @@ js.ua.Window = function(nativeWindow, properties) {
 js.ua.Window._index = 0;
 
 js.ua.Window.prototype = {
-	_DESTROY_CONFIRM : "Please confirm you want to leave the page.",
-
 	open : function(url, parameters, features) {
 		if (parameters) { // if parameters are not undefined or null
 			url += js.net.URL.formatQuery(parameters);
@@ -1730,15 +1622,19 @@ js.ua.Window.prototype = {
 		this._removeEventListener("beforeunload", js.ua.Window.prototype._beforeUnloadHandler);
 
 		var results = this._events.fire("pre-unload", this);
+		var message = "";
 		var preventUnload = false;
 		for (var i = 0; i < results.length; ++i) {
-			// event listener should return explicit false boolean in order to prevent unload
-			preventUnload |= (results[i] === false);
+			if(typeof results[i] === "string") {
+				preventUnload = true;
+				message += results[i];
+				message += "\r\n";
+			}
 		}
 
 		this._state = js.ua.Window.State.BEFORE_UNLOADED;
 		if (preventUnload) {
-			return this._DESTROY_CONFIRM;
+			return message;
 		}
 	},
 
@@ -1979,6 +1875,112 @@ $legacy(js.ua.Engine.TRIDENT, function() {
 		}
 	};
 });
+// refrain to use $package operator since is not yet defined
+(function () {
+    if (typeof js === "undefined") {
+        js = {};
+    }
+    if (typeof js.ua === "undefined") {
+        js.ua = {};
+    }
+})();
+
+js.ua.System = {
+    _ERROR_MESSAGE : "Temporary failure. Please refresh the page.",
+
+    print : function (message) {
+        if (typeof console !== "undefined") {
+            console.log(message.replace(/<br \/>/g, " "));
+        }
+    },
+
+    error : function (er) {
+        js.ua.System.print(js.ua.System._getErrorMessage(arguments));
+        js.ua.System.alert(this._ERROR_MESSAGE);
+    },
+
+    alert : function (message) {
+        if (arguments.length > 0) {
+            if (arguments.length > 1) {
+                message = $format(arguments);
+            }
+            window.setTimeout(function () {
+                window.alert(message);
+            }, 1);
+        }
+    },
+
+    toast : function (message) {
+        if (arguments.length > 0) {
+            if (arguments.length > 1) {
+                message = $format(arguments);
+            }
+            window.setTimeout(function () {
+                window.alert(message);
+            }, 1);
+        }
+    },
+
+    prompt : function (message, callback, scope) {
+        if (arguments.length > 0) {
+            if (arguments.length > 1) {
+                message = $format(arguments);
+            }
+            window.setTimeout(function () {
+                var prompt = window.prompt(message);
+                if (prompt === null) {
+                    // user cancel; convert to undefined
+                    prompt = undefined;
+                }
+                else {
+                    // user pressed OK
+                    if (prompt.length === 0) {
+                        // user OK but no input; convert to null
+                        prompt = null;
+                    }
+                }
+                callback.call(scope || window, prompt);
+            }, 1);
+        }
+    },
+
+    confirm : function (message, callback, scope) {
+        if (arguments.length > 0) {
+            if (arguments.length > 1) {
+                message = $format(arguments);
+            }
+            window.setTimeout(function () {
+                callback.call(scope || window, window.confirm(message));
+            }, 1);
+        }
+    },
+
+    _getErrorMessage : function (args) {
+        if (args[0] instanceof Error) {
+            var er = args[0];
+            var s = er.name;
+            if (er.message) {
+                s += ("\r\n" + er.message);
+            }
+            if(er.stack) {
+            	s += ("\r\n\r\n" + er.stack);
+            }
+            return s;
+        }
+        return $format(args);
+    }
+};
+
+(function () {
+    // Replace global error handler with with a more explicit one, if debugging active.
+    if (typeof __js_debug__ !== "undefined") {
+        js.ua.System.error = function (er) {
+            var s = js.ua.System._getErrorMessage(arguments);
+            js.ua.System.print(s);
+            js.ua.System.alert(s);
+        };
+    }
+})();
 $include = function () {
 };
 
