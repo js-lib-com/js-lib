@@ -233,11 +233,15 @@ js.event.Event.prototype = {
 	 * @return event transfer data, null if not set or undefined if not supported.
 	 */
 	getData : function() {
-		if (typeof this._domEvent.dataTransfer === "undefined") {
-			return undefined;
+		if (typeof this._domEvent.dataTransfer !== "undefined") {
+			var value = this._domEvent.dataTransfer.getData("text/plain");
+			return value ? js.lang.JSON.parse(value) : null;
 		}
-		var value = this._domEvent.dataTransfer.getData("text/plain");
-		return value ? js.lang.JSON.parse(value) : null;
+		if (typeof this._domEvent.clipboardData !== "undefined") {
+			var value = this._domEvent.clipboardData.getData("text/plain");
+			return value ? value : null;
+		}
+		return undefined;
 	},
 
 	/**
