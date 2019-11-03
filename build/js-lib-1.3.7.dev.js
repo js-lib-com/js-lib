@@ -2463,6 +2463,25 @@ js.dom.Element.prototype = {
 		return this;
 	},
 
+	addObject : function(value) {
+		// uses private field
+		var TEMPLATE_USER_DATA = js.dom.template.ListOperator.prototype._ITEM_TEMPLATE;
+
+		var templateElement = this.getUserData(TEMPLATE_USER_DATA);
+		if (templateElement == null) {
+			templateElement = this.getFirstChild();
+			templateElement.remove(false);
+			templateElement._ownerDoc = this._ownerDoc;
+			this.setUserData(TEMPLATE_USER_DATA, templateElement);
+		}
+
+		var element = templateElement.clone(true);
+		element.setUserData("value", value);
+		element.setObject(value);
+		this.addChild(element);
+		return this;
+	},
+
 	resetObject : function() {
 		this._ownerDoc._template.reset(this);
 		return this;
