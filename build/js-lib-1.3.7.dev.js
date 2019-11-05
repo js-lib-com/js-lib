@@ -2437,6 +2437,29 @@ js.dom.Element.prototype = {
 		});
 	},
 
+	copyToClipboard : function() {
+		this._node.select();
+		document.execCommand('copy');
+
+		var sel;
+		if ((sel = document.selection) && sel.empty) {
+			sel.empty();
+		}
+		else {
+			if (window.getSelection) {
+				window.getSelection().removeAllRanges();
+			}
+			var activeEl = document.activeElement;
+			if (activeEl) {
+				var tagName = activeEl.nodeName.toLowerCase();
+				if (tagName == "textarea" || (tagName == "input" && activeEl.type == "text")) {
+					// Collapse the selection to the end
+					activeEl.selectionStart = activeEl.selectionEnd;
+				}
+			}
+		}
+	},
+
 	// ------------------------------------------------------------------------
 
 	setValue : function(value) {
