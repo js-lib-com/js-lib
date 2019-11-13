@@ -7376,6 +7376,8 @@ js.event.Types = {
 
 	click : "MouseEvents",
 
+	contextmenu : "MouseEvents",
+
 	dblclick : "MouseEvents",
 
 	drag : "DragEvent",

@@ -43,6 +43,11 @@ js.event.Types = {
 	click : "MouseEvents",
 
 	/**
+	 * Event raised when right mouse is clicked.
+	 */
+	contextmenu : "MouseEvents",
+
+	/**
 	 * Mouse is double-clicked.
 	 */
 	dblclick : "MouseEvents",
