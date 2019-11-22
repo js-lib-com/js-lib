@@ -9756,6 +9756,7 @@ js.net.XHR.prototype = {
 		// 200 - success, redirect with X-JSLIB-Location or text/html content
 		// 204 - success with not content, that is, void remote method
 		// 400 - client request fail to obey a business constrain, e.g. employee SSN is not unique
+		// 401 - authorization required
 		// 500 - internal server error
 
 		if (this._request.status === 500) {
@@ -9778,6 +9779,13 @@ js.net.XHR.prototype = {
 			return undefined;
 		}
 
+		if (this._request.status === 401) {
+			$debug("js.net.XHR#_processResponse", "Authentication required on URL: %s", this._url);
+			WinMain.page.onAuthenticationRequired(this._url);
+			this._state = js.net.XHR.StateMachine.ERROR;
+			return undefined;
+		}
+		
 		if (this._request.status === 400) {
 			if (contentType.indexOf("application/json") !== -1) {
 				er = js.lang.JSON.parse(this._request.responseText);
@@ -10097,6 +10105,10 @@ js.ua.Page.prototype = {
 		text += "\n";
 		text += er.message;
 		js.ua.System.error(text);
+	},
+
+	onAuthenticationRequired : function(url) {
+		throw new js.lang.Exception("Authentication required for %s", url);
 	},
 
 	onBusinessFail : function(er) {

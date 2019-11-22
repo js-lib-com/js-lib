@@ -179,6 +179,10 @@ js.ua.Page.prototype = {
 		js.ua.System.error(text);
 	},
 
+	onAuthenticationRequired : function(url) {
+		throw new js.lang.Exception("Authentication required for %s", url);
+	},
+
 	/**
 	 * Business constrains exception handler. This handler just display business constrain hexadecimal code. Application
 	 * code may override this handler and provide a more descriptive, perhaps locale sensitive, message.
