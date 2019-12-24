@@ -99,13 +99,24 @@ js.dom.template.ConditionalExpression = function (content, scope, expression) {
     // parse expression and store statements
     this._parse(expression);
 
-    for (var i = 0, statement; i < this._statements.length; ++i) {
+    for (var i = 0, statement, value; i < this._statements.length; ++i) {
         statement = this._statements[i];
         if (statement.opcode === js.dom.template.ConditionalExpression.Opcode.NONE) {
             continue;
         }
         $assert(statement.propertyPath === "." || js.lang.Types.isObject(scope), "js.dom.template.ConditionalExpression#_exec", "Scope is not an object.");
-        this._value = this._evaluate(statement, content.getValue(scope, statement.propertyPath));
+        
+        // HACK: bugfix
+        // content.getValue() return null if object property is null but throws exception if object property is undefined
+        // this logic need to handle both null and undefined conditions the same way 
+        try {
+        	value = content.getValue(scope, statement.propertyPath);
+        }
+        catch(exception) {
+        	value = null;
+        }
+
+        this._value = this._evaluate(statement, value);
         if (!this._value) {
             break;
         }
@@ -133,7 +144,7 @@ js.dom.template.ConditionalExpression.prototype = {
         var State = js.dom.template.ConditionalExpression.State;
         var Opcode = js.dom.template.ConditionalExpression.Opcode;
 
-        var builder; // leave builder undefined since it is prepared on every new statement 
+        var builder; // leave builder undefined since it is prepared on every new statement
         var statement; // reference to current statement from this._statements[statementsIndex]
         var statementsIndex = -1; // on every new statement index is incremented so -1 prepares for first increment
         var state = State.STATEMENT;
@@ -226,7 +237,7 @@ js.dom.template.ConditionalExpression.prototype = {
 	 * method takes care to test internal state consistency and returns false if bad; so an invalid expression evaluates
 	 * to false.
 	 * 
-     * @param js.dom.template.ConditionalExpression.Statement statement parsed statement to evaluate,
+	 * @param js.dom.template.ConditionalExpression.Statement statement parsed statement to evaluate,
 	 * @param Object object value to evaluate, possible null.
 	 * @return Boolean true if this conditional expression is positively evaluated.
 	 * @assert <code>object</code> argument is not undefined or null.

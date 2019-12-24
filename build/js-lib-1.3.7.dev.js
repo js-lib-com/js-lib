@@ -5132,12 +5132,22 @@ js.dom.template.ConditionalExpression = function (content, scope, expression) {
     // parse expression and store statements
     this._parse(expression);
 
-    for (var i = 0, statement; i < this._statements.length; ++i) {
+    for (var i = 0, statement, value; i < this._statements.length; ++i) {
         statement = this._statements[i];
         if (statement.opcode === js.dom.template.ConditionalExpression.Opcode.NONE) {
             continue;
         }
-        this._value = this._evaluate(statement, content.getValue(scope, statement.propertyPath));
+        // HACK: bugfix
+        // content.getValue() return null if object property is null but throws exception if object property is undefined
+        // this logic need to handle both null and undefined conditions the same way 
+        try {
+        	value = content.getValue(scope, statement.propertyPath);
+        }
+        catch(exception) {
+        	value = null;
+        }
+
+        this._value = this._evaluate(statement, value);
         if (!this._value) {
             break;
         }
@@ -5153,7 +5163,7 @@ js.dom.template.ConditionalExpression.prototype = {
         var State = js.dom.template.ConditionalExpression.State;
         var Opcode = js.dom.template.ConditionalExpression.Opcode;
 
-        var builder; // leave builder undefined since it is prepared on every new statement 
+        var builder; // leave builder undefined since it is prepared on every new statement
         var statement; // reference to current statement from this._statements[statementsIndex]
         var statementsIndex = -1; // on every new statement index is incremented so -1 prepares for first increment
         var state = State.STATEMENT;
