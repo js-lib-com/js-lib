@@ -5695,6 +5695,31 @@ js.dom.template.CssClassOperator = function(content) {
 js.dom.template.CssClassOperator.prototype = {
 	_exec : function(element, scope, expression) {
 		js.util.Strings.parseNameValues(expression).forEach(function(pair) {
+			// there are two accepted syntaxes: object property path and conditional CSS class expression
+			// on object property path syntax pair.value is missing
+			// current implementation uses missing pair.name as flag for property path syntax
+
+			if (!pair.value) {
+				// here pair.name is object property path
+				// if pair.name starts with ! remove CSS class denoted by property value
+
+				var propertyPath, enabled;
+				if (pair.name.charAt(0) === '!') {
+					propertyPath = pair.name.substr(1);
+					enabled = false;
+				}
+				else {
+					propertyPath = pair.name;
+					enabled = true;
+				}
+
+				var cssClass = this._getValue(scope, propertyPath);
+				element.addCssClass(cssClass, enabled);
+				return;
+			}
+
+			// here we have a CSS class conditional expression
+
 			var expression = pair.name;
 			var cssClass = pair.value;
 
@@ -5708,6 +5733,15 @@ js.dom.template.CssClassOperator.prototype = {
 				element.removeCssClass(cssClass);
 			}
 		}, this);
+	},
+
+	_getValue : function(scope, propertyPath) {
+		var value = this._content.getValue(scope, propertyPath);
+		if (value === value.toUpperCase()) {
+			// if all upper case value is a constant that may contain underscore
+			return value.toLowerCase().replace(/_/gi, '-');
+		}
+		return js.util.Strings.toHyphenCase(value);
 	},
 
 	_reset : function(element, expression) {
@@ -10422,205 +10456,231 @@ $extends(js.util.Rand, Object);
 $package('js.util');
 
 js.util.Strings = {
-    trim : function (str) {
-        return str.trim();
-    },
+	trim : function(str) {
+		return str.trim();
+	},
 
-    REGEXP_PATTERN : /([\/|\.|\*|\?|\||\(|\)|\[|\]|\{|\}|\\|\^|\$])/g,
+	REGEXP_PATTERN : /([\/|\.|\*|\?|\||\(|\)|\[|\]|\{|\}|\\|\^|\$])/g,
 
-    escapeRegExp : function (str) {
-        js.util.Strings.REGEXP_PATTERN.lastIndex = 0;
-        return str.replace(js.util.Strings.REGEXP_PATTERN, '\\$1');
-    },
+	escapeRegExp : function(str) {
+		js.util.Strings.REGEXP_PATTERN.lastIndex = 0;
+		return str.replace(js.util.Strings.REGEXP_PATTERN, '\\$1');
+	},
 
-    equalsIgnoreCase : function (reference, target) {
-        if (typeof reference === 'undefined') {
-            return false;
-        }
-        if (typeof target === 'undefined') {
-            return false;
-        }
+	equalsIgnoreCase : function(reference, target) {
+		if (typeof reference === 'undefined') {
+			return false;
+		}
+		if (typeof target === 'undefined') {
+			return false;
+		}
 
-        if (reference === null && target === null) {
-            return true;
-        }
-        if (reference === null || target === null) {
-            return false;
-        }
-        return reference.toLocaleLowerCase() === target.toLocaleLowerCase();
-    },
+		if (reference === null && target === null) {
+			return true;
+		}
+		if (reference === null || target === null) {
+			return false;
+		}
+		return reference.toLocaleLowerCase() === target.toLocaleLowerCase();
+	},
 
-    startsWith : function (str, prefix) {
-        if (!str) {
-            return false;
-        }
-        return str.indexOf(prefix) === 0;
-    },
+	startsWith : function(str, prefix) {
+		if (!str) {
+			return false;
+		}
+		return str.indexOf(prefix) === 0;
+	},
 
-    endsWith : function (str, suffix) {
-        if (!str) {
-            return false;
-        }
-        return (str.length >= suffix.length) && str.lastIndexOf(suffix) === str.length - suffix.length;
-    },
+	endsWith : function(str, suffix) {
+		if (!str) {
+			return false;
+		}
+		return (str.length >= suffix.length) && str.lastIndexOf(suffix) === str.length - suffix.length;
+	},
 
-    contains : function (str, value) {
-        return str ? str.indexOf(value) !== -1 : false;
-    },
+	contains : function(str, value) {
+		return str ? str.indexOf(value) !== -1 : false;
+	},
 
-    toTitleCase : function (str) {
-        return str ? (str.charAt(0).toUpperCase() + str.substr(1).toLowerCase()) : '';
-    },
+	toTitleCase : function(str) {
+		return str ? (str.charAt(0).toUpperCase() + str.substr(1).toLowerCase()) : '';
+	},
 
-    toHyphenCase : function (str) {
-        if (!str) {
-            return '';
-        }
-        var s = str.charAt(0).toLowerCase();
-        s += str.substr(1).replace(/([A-Z][^A-Z]*)/g, function ($0, $1) {
-            return '-' + $1.toLowerCase();
-        });
-        return s;
-    },
+	toHyphenCase : function(str) {
+		if (!str) {
+			return '';
+		}
+		var s = str.charAt(0).toLowerCase();
+		s += str.substr(1).replace(/([A-Z][^A-Z]*)/g, function($0, $1) {
+			return '-' + $1.toLowerCase();
+		});
+		return s;
+	},
 
-    toScriptCase : function (str) {
-        if (!str) {
-            return '';
-        }
-        if (str.valueOf() == 'float') {
-            return js.ua.Engine.TRIDENT ? 'styleFloat' : 'cssFloat';
-        }
-        if (str.indexOf('-') === -1) {
-            return str.valueOf();
-        }
-        return str.replace(/\-(\w)/g, function ($0, $1) {
-            return $1.toUpperCase();
-        });
-    },
+	toScriptCase : function(str) {
+		if (!str) {
+			return '';
+		}
+		if (str.valueOf() == 'float') {
+			return js.ua.Engine.TRIDENT ? 'styleFloat' : 'cssFloat';
+		}
+		if (str.indexOf('-') === -1) {
+			return str.valueOf();
+		}
+		return str.replace(/\-(\w)/g, function($0, $1) {
+			return $1.toUpperCase();
+		});
+	},
 
-    toPlainText : function(text, offset, length) {
-        if (typeof offset === "undefined") {
-            offset = 0;
-        }
-        if (typeof length === "undefined") {
-            length = Number.MAX_VALUE;
-        }
+	toPlainText : function(text, offset, length) {
+		if (typeof offset === "undefined") {
+			offset = 0;
+		}
+		if (typeof length === "undefined") {
+			length = Number.MAX_VALUE;
+		}
 
-        var TEXT = 0;
-        var START_TAG = 1;
-        var END_TAG = 2;
-        var state = TEXT;
+		var TEXT = 0;
+		var START_TAG = 1;
+		var END_TAG = 2;
+		var state = TEXT;
 
-        var plainText = "";
-        for (var i = offset, c; i < text.length && plainText.length <= length; ++i) {
-            c = text.charAt(i);
+		var plainText = "";
+		for (var i = offset, c; i < text.length && plainText.length <= length; ++i) {
+			c = text.charAt(i);
 
-            switch (state) {
-            case TEXT:
-                if (c === '<') {
-                    state = START_TAG;
-                    break;
-                }
-                plainText += c;
-                break;
+			switch (state) {
+			case TEXT:
+				if (c === '<') {
+					state = START_TAG;
+					break;
+				}
+				plainText += c;
+				break;
 
-            case START_TAG:
-                if (c === '/') {
-                    state = END_TAG;
-                    break;
-                }
-                if (c === '>') {
-                    state = TEXT;
-                }
-                break;
+			case START_TAG:
+				if (c === '/') {
+					state = END_TAG;
+					break;
+				}
+				if (c === '>') {
+					state = TEXT;
+				}
+				break;
 
-            case END_TAG:
-                if (c === 'p') {
-                    plainText += "\r\n";
-                }
-                if (c === '>') {
-                    state = TEXT;
-                }
-                break;
-            }
-        }
-        return plainText;
-    },
+			case END_TAG:
+				if (c === 'p') {
+					plainText += "\r\n";
+				}
+				if (c === '>') {
+					state = TEXT;
+				}
+				break;
+			}
+		}
+		return plainText;
+	},
 
-    charsCount : function (str, ch) {
-        if (!str) {
-            return 0;
-        }
-        var count = 0;
-        for ( var i = 0; i < str.length; ++i) {
-            if (str.charAt(i) === ch) {
-                ++count;
-            }
-        }
-        return count;
-    },
+	charsCount : function(str, ch) {
+		if (!str) {
+			return 0;
+		}
+		var count = 0;
+		for (var i = 0; i < str.length; ++i) {
+			if (str.charAt(i) === ch) {
+				++count;
+			}
+		}
+		return count;
+	},
 
-    last : function (str, separator) {
-        return str.substr(str.lastIndexOf(separator) + 1);
-    },
+	last : function(str, separator) {
+		return str.substr(str.lastIndexOf(separator) + 1);
+	},
 
-    _PACKAGE_NAME_REX : js.lang.Operator._PACKAGE_NAME_REX,
+	_PACKAGE_NAME_REX : js.lang.Operator._PACKAGE_NAME_REX,
 
-    isPackageName : function (name) {
-        this._PACKAGE_NAME_REX.lastIndex = 0;
-        return name && this._PACKAGE_NAME_REX.test(name);
-    },
+	isPackageName : function(name) {
+		this._PACKAGE_NAME_REX.lastIndex = 0;
+		return name && this._PACKAGE_NAME_REX.test(name);
+	},
 
-    _CLASS_NAME_REX : js.lang.Operator._CLASS_NAME_REX,
+	_CLASS_NAME_REX : js.lang.Operator._CLASS_NAME_REX,
 
-    isQualifiedClassName : function (name) {
-        this._CLASS_NAME_REX.lastIndex = 0;
-        return name && this._CLASS_NAME_REX.test(name);
-    },
+	isQualifiedClassName : function(name) {
+		this._CLASS_NAME_REX.lastIndex = 0;
+		return name && this._CLASS_NAME_REX.test(name);
+	},
 
-    parseNameValues : function (expression) {
-        // sample expression: "name0:value0;name1:value1;"
+	parseNameValues : function(expression) {
+		// sample expression: "name0;name1:value1;"
 
-        var pairs = [];
-        if (!expression) {
-            return pairs;
-        }
+		var pairs = [];
+		if (!expression) {
+			return pairs;
+		}
+		if (expression.charAt(expression.length - 1) !== ';') {
+			expression += ';';
+		}
 
-        var semicolonIndex = 0, colonIndex, name;
-        for (;;) {
-            colonIndex = expression.indexOf(':', semicolonIndex);
-            if (colonIndex === -1) {
-                break;
-            }
-            name = expression.substring(semicolonIndex, colonIndex);
+		var nameBuilder = "";
+		var valueBuilder = "";
 
-            ++colonIndex;
-            semicolonIndex = expression.indexOf(';', colonIndex);
-            if (semicolonIndex === -1) {
-                semicolonIndex = expression.length;
-            }
-            pairs.push({
-                name : name,
-                value : expression.substring(colonIndex, semicolonIndex)
-            });
-            ++semicolonIndex;
-        }
+		// NAME 0
+		// VALUE 1
 
-        return pairs;
-    },
+		var state = 0; // NAME
+		for (var i = 0, c; i < expression.length; ++i) {
+			c = expression.charAt(i);
 
-    toString : function () {
-        return 'js.util.Strings';
-    }
+			switch (state) {
+			case 0: // NAME
+				if (c === ';') {
+					pairs.push({
+						name : nameBuilder,
+						value : null
+					});
+					nameBuilder.length = "";
+					break;
+				}
+				if (c === ':') {
+					state = 1; // VALUE
+					break;
+				}
+				nameBuilder += c;
+				break;
+
+			case 1: // VALUE
+				if (c === ';') {
+					pairs.push({
+						name : nameBuilder,
+						value : valueBuilder
+					});
+					nameBuilder = "";
+					valueBuilder = "";
+					state = 0; // NAME
+					break;
+				}
+				valueBuilder += c;
+				break;
+			}
+		}
+
+		return pairs;
+	},
+
+	toString : function() {
+		return 'js.util.Strings';
+	}
 };
 
-$legacy(js.ua.Engine.TRIDENT, function () {
-    js.util.Strings.TRIM_PATTERN = /^\s+|\s+$/g;
+$legacy(js.ua.Engine.TRIDENT, function() {
+	js.util.Strings.TRIM_PATTERN = /^\s+|\s+$/g;
 
-    js.util.Strings.trim = function (str) {
-        js.util.Strings.TRIM_PATTERN.lastIndex = 0;
-        return str.replace(js.util.Strings.TRIM_PATTERN, '');
-    };
+	js.util.Strings.trim = function(str) {
+		js.util.Strings.TRIM_PATTERN.lastIndex = 0;
+		return str.replace(js.util.Strings.TRIM_PATTERN, '');
+	};
 });
 $package('js.util');
 

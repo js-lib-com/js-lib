@@ -18,8 +18,10 @@ $package("js.dom.template");
  * 
  * <pre>
  *    operand = class-expression *( ';' class-expression ) [ ';' ]
- *    class-expression = conditional-expression ':' class-name
+ *    class-expression = ['!']OPP | conditional-class
+ *    conditional-class = conditional-expression ':' class-name
  *    
+ *    ; OPP = object property path to value used as CSS class; remove CSS class if OPP is prefixed with '!'
  *    ; conditional-expression = see conditional expression class description
  *    ; class-name = CSS class name
  * </pre>
@@ -47,6 +49,31 @@ js.dom.template.CssClassOperator.prototype = {
 	 */
 	_exec : function(element, scope, expression) {
 		js.util.Strings.parseNameValues(expression).forEach(function(pair) {
+			// there are two accepted syntaxes: object property path and conditional CSS class expression
+			// on object property path syntax pair.value is missing
+			// current implementation uses missing pair.name as flag for property path syntax
+
+			if (!pair.value) {
+				// here pair.name is object property path
+				// if pair.name starts with ! remove CSS class denoted by property value
+
+				var propertyPath, enabled;
+				if (pair.name.charAt(0) === '!') {
+					propertyPath = pair.name.substr(1);
+					enabled = false;
+				}
+				else {
+					propertyPath = pair.name;
+					enabled = true;
+				}
+
+				var cssClass = this._getValue(scope, propertyPath);
+				element.addCssClass(cssClass, enabled);
+				return;
+			}
+
+			// here we have a CSS class conditional expression
+
 			var expression = pair.name;
 			var cssClass = pair.value;
 
@@ -60,6 +87,15 @@ js.dom.template.CssClassOperator.prototype = {
 				element.removeCssClass(cssClass);
 			}
 		}, this);
+	},
+
+	_getValue : function(scope, propertyPath) {
+		var value = this._content.getValue(scope, propertyPath);
+		if (value === value.toUpperCase()) {
+			// if all upper case value is a constant that may contain underscore
+			return value.toLowerCase().replace(/_/gi, '-');
+		}
+		return js.util.Strings.toHyphenCase(value);
 	},
 
 	_reset : function(element, expression) {
