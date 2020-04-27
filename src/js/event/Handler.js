@@ -16,6 +16,10 @@ $package("js.event");
  * @param Boolean capture capture flag.
  */
 js.event.Handler = function (targetNode, type, listener, scope, capture) {
+	$assert(targetNode, "js.event.Handler#Handler", "Undefined or null target node.");
+	$assert(type, "js.event.Handler#Handler", "Undefined or null event type.");
+	$assert(listener, "js.event.Handler#Handler", "Undefined or null listener.");
+	
     /**
      * DOM native node wrapped by this event handler.
      * 
