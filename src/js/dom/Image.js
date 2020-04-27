@@ -44,6 +44,8 @@ js.dom.Image.prototype = {
 	 */
 	_TRANSPARENT_DOT : 'data:image/gif;base64,R0lGODlhAQABAIAAAP///////yH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==',
 
+	_SRC_REX : /^.+\/[^/_]+_\d+x\d+\..+$/,
+		
 	/**
 	 * Set this image source. Set image source but takes care of empty values. There are browsers that consider empty
 	 * <em>src</em> as current page. As a consequence browser tries to load as image content the current page
@@ -65,6 +67,18 @@ js.dom.Image.prototype = {
 		if (this._format !== null) {
 			src = this._format.format(src);
 		}
+
+		if(this.hasAttr("width") && this.hasAttr("height") && !this._SRC_REX.test(src)) {
+			var argumentsIndex = src.lastIndexOf('?');
+			if (argumentsIndex === -1) {
+				argumentsIndex = src.length;
+			}
+			var extensionIndex = src.lastIndexOf('.', argumentsIndex);
+			if (extensionIndex > 0) {
+				src = src.substring(0, extensionIndex) + '_' + parseInt(this.getAttr("width")) + 'x' + parseInt(this.getAttr("height")) + src.substring(extensionIndex);
+			}
+		}
+
 		this._node.src = src;
 		return this;
 	},
@@ -94,12 +108,16 @@ js.dom.Image.prototype = {
 	 * @assert image source is not undefined, null or empty.
 	 */
 	reload : function(src) {
+		if (!src) {
+			src = this._node.src;
+		}
 		$assert(src, "js.dom.Image#reload", "Image source is undefined, null or empty.");
+		var random = Math.random().toString(36).substr(2);
 		var i = src.indexOf('?');
 		if (i !== -1) {
-			src = src.substring(0, i);
+			return this.setSrc(src + '&__random__=' + random);
 		}
-		return this.setSrc(src + '?' + Math.random().toString(36).substr(2));
+		return this.setSrc(src + '?' + random);
 	},
 
 	/**
