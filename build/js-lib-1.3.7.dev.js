@@ -4161,6 +4161,8 @@ js.dom.Image = function(ownerDoc, node) {
 js.dom.Image.prototype = {
 	_TRANSPARENT_DOT : 'data:image/gif;base64,R0lGODlhAQABAIAAAP///////yH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==',
 
+	_SRC_REX : /^.+\/[^/_]+_\d+x\d+\..+$/,
+		
 	setSrc : function(src) {
 		if (!src || /^\s+|(?:&nbsp;)+$/g.test(src)) {
 			return this.reset();
@@ -4169,6 +4171,18 @@ js.dom.Image.prototype = {
 		if (this._format !== null) {
 			src = this._format.format(src);
 		}
+
+		if(this.hasAttr("width") && this.hasAttr("height") && !this._SRC_REX.test(src)) {
+			var argumentsIndex = src.lastIndexOf('?');
+			if (argumentsIndex === -1) {
+				argumentsIndex = src.length;
+			}
+			var extensionIndex = src.lastIndexOf('.', argumentsIndex);
+			if (extensionIndex > 0) {
+				src = src.substring(0, extensionIndex) + '_' + parseInt(this.getAttr("width")) + 'x' + parseInt(this.getAttr("height")) + src.substring(extensionIndex);
+			}
+		}
+
 		this._node.src = src;
 		return this;
 	},
@@ -4178,11 +4192,15 @@ js.dom.Image.prototype = {
 	},
 
 	reload : function(src) {
+		if (!src) {
+			src = this._node.src;
+		}
+		var random = Math.random().toString(36).substr(2);
 		var i = src.indexOf('?');
 		if (i !== -1) {
-			src = src.substring(0, i);
+			return this.setSrc(src + '&__random__=' + random);
 		}
-		return this.setSrc(src + '?' + Math.random().toString(36).substr(2));
+		return this.setSrc(src + '?' + random);
 	},
 
 	reset : function() {
@@ -4231,6 +4249,7 @@ js.dom.ImageControl = function(ownerDoc, node) {
 
 js.dom.ImageControl.prototype = {
 	reset : function() {
+		this._error = false;
 		if (this._defaultSrc != null) {
 			this._node.src = this._defaultSrc;
 		}
@@ -4240,12 +4259,28 @@ js.dom.ImageControl.prototype = {
 		return this;
 	},
 
+	reload : function(src) {
+		if(!src) {
+			src = this._node.src;
+		}
+		return this._setValue(src);
+	},
+
 	_setValue : function(src) {
 		if (!src || /^\s+|(?:&nbsp;)+$/g.test(src)) {
 			return this.reset();
 		}
-		this._node.src = "";
-		this._node.src = src + '?' + Date.now();
+		
+		this._error = false;
+		var random = Math.random().toString(36).substr(2);
+
+		var i = src.indexOf('?');
+		if (i !== -1) {
+			this._node.src = src + '&__random__=' + random;
+		}
+		else {
+			this._node.src = src + '?' + random;
+		}
 		return this;
 	},
 
@@ -4253,8 +4288,23 @@ js.dom.ImageControl.prototype = {
 		if (this._error) {
 			return null;
 		}
-		var src = this._node.src;
-		return src ? src.substr(0, src.indexOf('?')) : null;
+		
+		// use attributes interface to retrieve image source
+		// node.src returns normalized URL, with protocol and server, even if set value was absolute path
+		// do not confuse absolute path with absolute URL
+		
+		var attr = this._node.attributes.getNamedItem("src");
+		if (attr == null) {
+			return null;
+		}
+		
+		var src = attr.value;
+		if(src == null) {
+			return null;
+		}
+		
+		var argsIndex = src.indexOf('?');
+		return argsIndex > 0 ? src.substr(0, argsIndex) : src;
 	},
 
 	_onError : function(ev) {
@@ -6690,7 +6740,7 @@ js.dom.template.SrcOperator.prototype = {
 		}
 		else {
 			$debug("js.dom.template.SrcOperator#_exec", "Set element |%s| src attribute from property |%s|.", element, propertyPath);
-			if (typeof element.reload === "function") {
+			if (Boolean(element.getAttr("data-reload"))) {
 				element.reload(value);
 			}
 			else if (typeof element.setSrc === "function") {
@@ -9749,7 +9799,7 @@ js.net.XHR.prototype = {
 			try {
 				this._timeout.stop();
 				var response = this._processResponse();
-				if (typeof response !== "undefined") {
+				if (this._state === js.net.XHR.StateMachine.DONE) {
 					this._events.fire("load", response);
 				}
 			} catch (er) {
@@ -9829,7 +9879,7 @@ js.net.XHR.prototype = {
 			this._state = js.net.XHR.StateMachine.ERROR;
 			return undefined;
 		}
-		
+
 		if (this._request.status === 400) {
 			if (contentType.indexOf("application/json") !== -1) {
 				er = js.lang.JSON.parse(this._request.responseText);
@@ -9868,18 +9918,24 @@ js.net.XHR.prototype = {
 		// there one can use XML
 
 		if (contentType === "text/html") {
+			this._state = js.net.XHR.StateMachine.ABORTED;
 			$error("js.net.XHR#_processResponse", "Got HTML page from server, most probably login form. Force page reload.");
 			WinMain.reload();
 			return undefined;
 		}
 
-		this._state = js.net.XHR.StateMachine.DONE;
 		var redirect = this._request.getResponseHeader("X-JSLIB-Location");
 		// XMLHttpRequest mandates null for not existing response header but there is at least one browser that returns
 		// empty string; so we need to test for both conditions
 		if (redirect) {
+			this._state = js.net.XHR.StateMachine.ABORTED;
 			$debug("js.net.XHR#_processResponse", "Server side redirect to |%s|.", redirect);
 			WinMain.assign(redirect);
+			return undefined;
+		}
+
+		this._state = js.net.XHR.StateMachine.DONE;
+		if (!contentType) {
 			return undefined;
 		}
 
