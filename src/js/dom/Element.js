@@ -1320,6 +1320,18 @@ js.dom.Element.prototype = {
 	},
 
 	/**
+	 * Collect user data from all children and return the array. Returned array may contain null items for children
+	 * without user data. Returned array has the length equal to children count even if all items are null.
+	 * 
+	 * @return Array children user data, possible with null items.
+	 */
+	getListData : function() {
+		return this.getChildren().map(function(child) {
+			return child.getUserData();
+		});
+	},
+
+	/**
 	 * Bind element class or format to selected descendants.
 	 * 
 	 * @param String selectors comma separated selectors,

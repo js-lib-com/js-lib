@@ -2616,6 +2616,12 @@ js.dom.Element.prototype = {
 		return data;
 	},
 
+	getListData : function() {
+		return this.getChildren().map(function(child) {
+			return child.getUserData();
+		});
+	},
+
 	bind : function(selectors, typeName) {
 		js.dom.Node.bind(this._node, selectors, typeName);
 		return this;
@@ -7245,7 +7251,7 @@ js.event.EventsMap = {
 $package("js.event");
 
 js.event.Handler = function (targetNode, type, listener, scope, capture) {
-    this.node = targetNode.node;
+	this.node = targetNode.node;
 
     this.type = type;
 
@@ -9934,6 +9940,7 @@ js.net.XHR.prototype = {
 			return undefined;
 		}
 
+		// return undefined to signal void content when there is no content type in response header
 		this._state = js.net.XHR.StateMachine.DONE;
 		if (!contentType) {
 			return undefined;
