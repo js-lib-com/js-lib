@@ -4161,14 +4161,17 @@ js.dom.Image = function(ownerDoc, node) {
 		this._defaultSrc = this._TRANSPARENT_DOT;
 	}
 
+	this._sizeVariant = null;
+
 	this.on("error", this._onError, this);
+	this._error = false;
 };
 
 js.dom.Image.prototype = {
 	_TRANSPARENT_DOT : 'data:image/gif;base64,R0lGODlhAQABAIAAAP///////yH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==',
 
-	_SRC_REX : /^.+\/[^/_]+_\d+x\d+\..+$/,
-		
+	_SRC_REX : /^.+\/[^/_]+_\d*x\d*\..+$/,
+
 	setSrc : function(src) {
 		if (!src || /^\s+|(?:&nbsp;)+$/g.test(src)) {
 			return this.reset();
@@ -4177,16 +4180,31 @@ js.dom.Image.prototype = {
 		if (this._format !== null) {
 			src = this._format.format(src);
 		}
-
-		if(this.hasAttr("width") && this.hasAttr("height") && !this._SRC_REX.test(src)) {
+		if ((this.hasAttr("width") || this.hasAttr("height")) && !this._SRC_REX.test(src)) {
 			var argumentsIndex = src.lastIndexOf('?');
 			if (argumentsIndex === -1) {
 				argumentsIndex = src.length;
 			}
 			var extensionIndex = src.lastIndexOf('.', argumentsIndex);
 			if (extensionIndex > 0) {
-				src = src.substring(0, extensionIndex) + '_' + parseInt(this.getAttr("width")) + 'x' + parseInt(this.getAttr("height")) + src.substring(extensionIndex);
+				var width = this.getAttr("width");
+				var height = this.getAttr("height");
+
+				this._sizeVariant = '_';
+				if (width != null) {
+					this._sizeVariant += parseInt(width);
+				}
+				this._sizeVariant += 'x';
+				if (height != null) {
+					this._sizeVariant += parseInt(height);
+				}
+
+				var srcBuilder = src.substring(0, extensionIndex);
+				srcBuilder += this._sizeVariant;
+				srcBuilder += src.substring(extensionIndex); // extension includes dot separator
+				src = srcBuilder;
 			}
+
 		}
 
 		this._node.src = src;
@@ -4194,7 +4212,14 @@ js.dom.Image.prototype = {
 	},
 
 	getSrc : function() {
-		return this._node.src;
+		return this._normalizeSrc(this._node.src);
+	},
+
+	_normalizeSrc : function(src) {
+		if (this._sizeVariant != null) {
+			src = src.replace(this._sizeVariant, '');
+		}
+		return src;
 	},
 
 	reload : function(src) {
@@ -4203,13 +4228,11 @@ js.dom.Image.prototype = {
 		}
 		var random = Math.random().toString(36).substr(2);
 		var i = src.indexOf('?');
-		if (i !== -1) {
-			return this.setSrc(src + '&__random__=' + random);
-		}
-		return this.setSrc(src + '?' + random);
+		return this.setSrc(src + (i !== -1 ? '&__random__=' : '?') + random);
 	},
 
 	reset : function() {
+		this._error = false;
 		this._node.src = this._defaultSrc;
 		return this;
 	},
@@ -4236,6 +4259,7 @@ js.dom.Image.prototype = {
 		if (typeof this._node !== "undefined") {
 			this._node.src = this._defaultSrc;
 		}
+		this._error = true;
 	},
 
 	toString : function() {
@@ -4247,81 +4271,87 @@ $package("js.dom");
 
 js.dom.ImageControl = function(ownerDoc, node) {
 	this.$super(ownerDoc, node);
-	this._defaultSrc = this.getAttr("data-default");
-
-	this.on("error", this._onError, this);
-	this._error = false;
 };
 
 js.dom.ImageControl.prototype = {
-	reset : function() {
-		this._error = false;
-		if (this._defaultSrc != null) {
-			this._node.src = this._defaultSrc;
-		}
-		else {
-			this._node.removeAttribute("src");
-		}
-		return this;
-	},
-
-	reload : function(src) {
-		if(!src) {
-			src = this._node.src;
-		}
-		return this._setValue(src);
-	},
-
-	_setValue : function(src) {
-		if (!src || /^\s+|(?:&nbsp;)+$/g.test(src)) {
+	setValue : function(src) {
+		if (!src) {
 			return this.reset();
 		}
-		
 		this._error = false;
 		var random = Math.random().toString(36).substr(2);
-
 		var i = src.indexOf('?');
-		if (i !== -1) {
-			this._node.src = src + '&__random__=' + random;
-		}
-		else {
-			this._node.src = src + '?' + random;
-		}
-		return this;
+		return this.setSrc(src + (i !== -1 ? '&__random__=' : '?') + random);
 	},
 
-	_getValue : function() {
+	getValue : function() {
 		if (this._error) {
 			return null;
 		}
-		
+
 		// use attributes interface to retrieve image source
 		// node.src returns normalized URL, with protocol and server, even if set value was absolute path
 		// do not confuse absolute path with absolute URL
-		
+
 		var attr = this._node.attributes.getNamedItem("src");
 		if (attr == null) {
 			return null;
 		}
-		
+
 		var src = attr.value;
-		if(src == null) {
+		if (src == null) {
 			return null;
 		}
-		
+
+		src = this._normalizeSrc(src);
 		var argsIndex = src.indexOf('?');
 		return argsIndex > 0 ? src.substr(0, argsIndex) : src;
 	},
 
-	_onError : function(ev) {
-		this._error = true;
+	isValid : function() {
+		var valid = function(valid) {
+			this.addCssClass(this.CSS_INVALID, !valid);
+			return valid;
+		}.bind(this);
+
+		// a disabled control is always consider valid to not influence form validity test
+		if (this._node.disabled) {
+			return valid(true);
+		}
+
+		var value = this.getValue();
+		if (this.hasCssClass(this.CSS_OPTIONAL) && !value) {
+			// an optional and empty control is always valid
+			return valid(true);
+		}
+
+		// here value can still be empty
+		if (this._format !== null) {
+			// if have formatter class delegates its test predicate
+			return valid(this._format.test(value));
+		}
+
+		// if no formatter class a control is valid if its value is not empty
+		return valid(Boolean(value));
+	},
+
+	isMultiple : function() {
+		return false;
+	},
+
+	forEachItem : function(callback, scope) {
+		callback.call(scope || window, {
+			name : this.getName(),
+			value : this.getValue()
+		});
 	},
 
 	toString : function() {
 		return "js.dom.ImageControl";
 	}
 };
-$extends(js.dom.ImageControl, js.dom.Control);
+$extends(js.dom.ImageControl, js.dom.Image);
+$implements(js.dom.Control, js.dom.ControlInterface);
 $package("js.dom");
 
 js.dom.Node = {

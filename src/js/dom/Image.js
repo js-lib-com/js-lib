@@ -33,7 +33,10 @@ js.dom.Image = function(ownerDoc, node) {
 		this._defaultSrc = this._TRANSPARENT_DOT;
 	}
 
+	this._sizeVariant = null;
+
 	this.on("error", this._onError, this);
+	this._error = false;
 };
 
 js.dom.Image.prototype = {
@@ -44,8 +47,8 @@ js.dom.Image.prototype = {
 	 */
 	_TRANSPARENT_DOT : 'data:image/gif;base64,R0lGODlhAQABAIAAAP///////yH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==',
 
-	_SRC_REX : /^.+\/[^/_]+_\d+x\d+\..+$/,
-		
+	_SRC_REX : /^.+\/[^/_]+_\d*x\d*\..+$/,
+
 	/**
 	 * Set this image source. Set image source but takes care of empty values. There are browsers that consider empty
 	 * <em>src</em> as current page. As a consequence browser tries to load as image content the current page
@@ -67,16 +70,31 @@ js.dom.Image.prototype = {
 		if (this._format !== null) {
 			src = this._format.format(src);
 		}
-
-		if(this.hasAttr("width") && this.hasAttr("height") && !this._SRC_REX.test(src)) {
+		if ((this.hasAttr("width") || this.hasAttr("height")) && !this._SRC_REX.test(src)) {
 			var argumentsIndex = src.lastIndexOf('?');
 			if (argumentsIndex === -1) {
 				argumentsIndex = src.length;
 			}
 			var extensionIndex = src.lastIndexOf('.', argumentsIndex);
 			if (extensionIndex > 0) {
-				src = src.substring(0, extensionIndex) + '_' + parseInt(this.getAttr("width")) + 'x' + parseInt(this.getAttr("height")) + src.substring(extensionIndex);
+				var width = this.getAttr("width");
+				var height = this.getAttr("height");
+
+				this._sizeVariant = '_';
+				if (width != null) {
+					this._sizeVariant += parseInt(width);
+				}
+				this._sizeVariant += 'x';
+				if (height != null) {
+					this._sizeVariant += parseInt(height);
+				}
+
+				var srcBuilder = src.substring(0, extensionIndex);
+				srcBuilder += this._sizeVariant;
+				srcBuilder += src.substring(extensionIndex); // extension includes dot separator
+				src = srcBuilder;
 			}
+
 		}
 
 		this._node.src = src;
@@ -90,7 +108,14 @@ js.dom.Image.prototype = {
 	 * @return String this image source.
 	 */
 	getSrc : function() {
-		return this._node.src;
+		return this._normalizeSrc(this._node.src);
+	},
+
+	_normalizeSrc : function(src) {
+		if (this._sizeVariant != null) {
+			src = src.replace(this._sizeVariant, '');
+		}
+		return src;
 	},
 
 	/**
@@ -114,20 +139,20 @@ js.dom.Image.prototype = {
 		$assert(src, "js.dom.Image#reload", "Image source is undefined, null or empty.");
 		var random = Math.random().toString(36).substr(2);
 		var i = src.indexOf('?');
-		if (i !== -1) {
-			return this.setSrc(src + '&__random__=' + random);
-		}
-		return this.setSrc(src + '?' + random);
+		return this.setSrc(src + (i !== -1 ? '&__random__=' : '?') + random);
 	},
 
 	/**
 	 * Clear image. There are times when need to empty an image, e.g. when part of a form that is reset. But we can't
 	 * simply erase image src because some browsers will display that missing image icon or worst will consider empty
 	 * src as current page. In order to have an working image reset we use a {@link #_TRANSPARENT_DOT}.
+	 * <p>
+	 * Takes care to reset error state.
 	 * 
 	 * @return js.html.Image this object.
 	 */
 	reset : function() {
+		this._error = false;
 		this._node.src = this._defaultSrc;
 		return this;
 	},
@@ -173,8 +198,7 @@ js.dom.Image.prototype = {
 	},
 
 	/**
-	 * On image loading error uses default value. Note that this listener is registered only if {@link #_defaultSrc} is
-	 * set.
+	 * On image loading error uses default value. Also takes care to update error state.
 	 * 
 	 * @param js.event.Event ev error event.
 	 */
@@ -184,6 +208,7 @@ js.dom.Image.prototype = {
 		if (typeof this._node !== "undefined") {
 			this._node.src = this._defaultSrc;
 		}
+		this._error = true;
 	},
 
 	/**
