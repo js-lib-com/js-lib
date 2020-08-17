@@ -4271,6 +4271,8 @@ $package("js.dom");
 
 js.dom.ImageControl = function(ownerDoc, node) {
 	this.$super(ownerDoc, node);
+
+	this.__control__ = true;
 };
 
 js.dom.ImageControl.prototype = {
@@ -6461,110 +6463,113 @@ $extends(js.dom.template.OMapOperator, js.dom.template.Operator);
 $package("js.dom.template");
 
 js.dom.template.Opcode = {
-    NONE : 1,
+	NONE : 1,
 
-    ATTR : 2,
+	ATTR : 2,
 
-    CSS_CLASS : 3,
+	CSS_CLASS : 3,
 
-    ID : 4,
+	ID : 4,
 
-    SRC : 5,
+	SRC : 5,
 
-    HREF : 6,
+	HREF : 6,
 
-    TITLE : 7,
+	TITLE : 7,
 
-    VALUE : 8,
+	VALUE : 8,
 
-    TEXT : 9,
+	TEXT : 9,
 
-    HTML : 10,
+	HTML : 10,
 
-    OBJECT : 11,
+	OBJECT : 11,
 
-    LIST : 12,
+	LIST : 12,
 
-    OLIST : 13,
+	OLIST : 13,
 
-    MAP : 14,
+	MAP : 14,
 
-    OMAP : 15,
+	OMAP : 15,
 
-    NUMBERING : 16,
+	NUMBERING : 16,
 
-    IF : 17,
+	IF : 17,
 
-    EXCLUDE : 18,
+	EXCLUDE : 18,
 
-    GOTO : 19,
+	GOTO : 19,
 
-    _OPCODE_PREFIX : "data-",
+	OPTIONS : 20,
 
-    fromAttrName : function (attrName) {
-        if (attrName.indexOf(this._OPCODE_PREFIX) !== 0) {
-            return this.NONE;
-        }
-        var opcode = attrName.substring(this._OPCODE_PREFIX.length).toUpperCase().replace(/-/g, '_');
-        if (!(opcode in this)) {
-            return this.NONE;
-        }
-        return this[opcode];
-    },
+	_OPCODE_PREFIX : "data-",
 
-    hasOperator : function (element, operatorName) {
-        return element.hasAttr(this._OPCODE_PREFIX + operatorName.toLowerCase());
-    },
+	fromAttrName : function(attrName) {
+		if (attrName.indexOf(this._OPCODE_PREFIX) !== 0) {
+			return this.NONE;
+		}
+		var opcode = attrName.substring(this._OPCODE_PREFIX.length).toUpperCase().replace(/-/g, '_');
+		if (!(opcode in this)) {
+			return this.NONE;
+		}
+		return this[opcode];
+	},
 
-    type : function (opcode) {
-        var t = this._types[opcode];
-        return (typeof t === "undefined") ? js.dom.template.Opcode.Type.NONE : t;
-    }
+	hasOperator : function(element, operatorName) {
+		return element.hasAttr(this._OPCODE_PREFIX + operatorName.toLowerCase());
+	},
+
+	type : function(opcode) {
+		var t = this._types[opcode];
+		return (typeof t === "undefined") ? js.dom.template.Opcode.Type.NONE : t;
+	}
 };
 
 js.dom.template.Opcode.Type = {
-    NONE : 1,
+	NONE : 1,
 
-    JUMP : 2,
+	JUMP : 2,
 
-    CONDITIONAL : 3,
+	CONDITIONAL : 3,
 
-    CONTENT : 4,
+	CONTENT : 4,
 
-    ATTRIBUTE : 5,
+	ATTRIBUTE : 5,
 
-    name : function (type) {
-        if (!this._names) {
-            this._names = [ "NONE", "JUMP", "CONDITIONAL", "CONTENT", "ATTRIBUTE" ];
-        }
-        return this._names[type - 1] || this._names[0];
-    }
+	name : function(type) {
+		if (!this._names) {
+			this._names = [ "NONE", "JUMP", "CONDITIONAL", "CONTENT", "ATTRIBUTE" ];
+		}
+		return this._names[type - 1] || this._names[0];
+	}
 };
 
-$static(function () {
-    // WARNING: take care to update opcode types hash table when add new operators
-    var Opcode = js.dom.template.Opcode;
+$static(function() {
+	// WARNING: take care to update opcode this types table when add new operator
+	var Opcode = js.dom.template.Opcode;
 
-    Opcode._types = {};
-    Opcode._types[Opcode.NONE] = Opcode.Type.NONE;
-    Opcode._types[Opcode.ATTR] = Opcode.Type.ATTRIBUTE;
-    Opcode._types[Opcode.CSS_CLASS] = Opcode.Type.ATTRIBUTE;
-    Opcode._types[Opcode.ID] = Opcode.Type.ATTRIBUTE;
-    Opcode._types[Opcode.SRC] = Opcode.Type.ATTRIBUTE;
-    Opcode._types[Opcode.HREF] = Opcode.Type.ATTRIBUTE;
-    Opcode._types[Opcode.TITLE] = Opcode.Type.ATTRIBUTE;
-    Opcode._types[Opcode.VALUE] = Opcode.Type.ATTRIBUTE;
-    Opcode._types[Opcode.TEXT] = Opcode.Type.CONTENT;
-    Opcode._types[Opcode.HTML] = Opcode.Type.CONTENT;
-    Opcode._types[Opcode.OBJECT] = Opcode.Type.CONTENT;
-    Opcode._types[Opcode.LIST] = Opcode.Type.CONTENT;
-    Opcode._types[Opcode.OLIST] = Opcode.Type.CONTENT;
-    Opcode._types[Opcode.MAP] = Opcode.Type.CONTENT;
-    Opcode._types[Opcode.OMAP] = Opcode.Type.CONTENT;
-    Opcode._types[Opcode.NUMBERING] = Opcode.Type.CONTENT;
-    Opcode._types[Opcode.IF] = Opcode.Type.CONDITIONAL;
-    Opcode._types[Opcode.EXCLUDE] = Opcode.Type.CONDITIONAL;
-    Opcode._types[Opcode.GOTO] = Opcode.Type.JUMP;
+	Opcode._types = {};
+	Opcode._types[Opcode.NONE] = Opcode.Type.NONE;
+	Opcode._types[Opcode.ATTR] = Opcode.Type.ATTRIBUTE;
+	Opcode._types[Opcode.CSS_CLASS] = Opcode.Type.ATTRIBUTE;
+	Opcode._types[Opcode.ID] = Opcode.Type.ATTRIBUTE;
+	Opcode._types[Opcode.SRC] = Opcode.Type.ATTRIBUTE;
+	Opcode._types[Opcode.HREF] = Opcode.Type.ATTRIBUTE;
+	Opcode._types[Opcode.TITLE] = Opcode.Type.ATTRIBUTE;
+	Opcode._types[Opcode.VALUE] = Opcode.Type.ATTRIBUTE;
+	Opcode._types[Opcode.TEXT] = Opcode.Type.CONTENT;
+	Opcode._types[Opcode.HTML] = Opcode.Type.CONTENT;
+	Opcode._types[Opcode.OBJECT] = Opcode.Type.CONTENT;
+	Opcode._types[Opcode.LIST] = Opcode.Type.CONTENT;
+	Opcode._types[Opcode.OLIST] = Opcode.Type.CONTENT;
+	Opcode._types[Opcode.MAP] = Opcode.Type.CONTENT;
+	Opcode._types[Opcode.OMAP] = Opcode.Type.CONTENT;
+	Opcode._types[Opcode.NUMBERING] = Opcode.Type.CONTENT;
+	Opcode._types[Opcode.IF] = Opcode.Type.CONDITIONAL;
+	Opcode._types[Opcode.EXCLUDE] = Opcode.Type.CONDITIONAL;
+	Opcode._types[Opcode.GOTO] = Opcode.Type.JUMP;
+	Opcode._types[Opcode.OPTIONS] = Opcode.Type.CONTENT;
 });
 $package('js.dom.template');
 
@@ -6593,6 +6598,7 @@ js.dom.template.OperatorFactory.prototype = {
         this[Opcode.OLIST] = new js.dom.template.OListOperator(this._template, content);
         this[Opcode.MAP] = new js.dom.template.MapOperator(this._template, content);
         this[Opcode.OMAP] = new js.dom.template.OMapOperator(this._template, content);
+        this[Opcode.OPTIONS] = new js.dom.template.OptionsOperator(content);
     },
 
     getInstance : function (opcode) {
@@ -6756,6 +6762,42 @@ js.dom.template.OperatorsList.Meta = function () {
     this.operand = null;
 };
 $extends(js.dom.template.OperatorsList.Meta, Object);
+$package("js.dom.template");
+
+js.dom.template.OptionsOperator = function(content) {
+	this.$super(content);
+};
+
+js.dom.template.OptionsOperator.prototype = {
+	_exec : function(element, scope, propertyPath) {
+		if (scope === null) {
+			$warn("js.dom.template.OptionsOperator#_exec", "Null scope for property |%s|. Remove options from select element |%s|.", propertyPath, element);
+			element.removeChildren();
+			return null;
+		}
+
+		var options = this._content.getValue(scope, propertyPath);
+
+		if (options === null) {
+			$warn("js.dom.template.OptionsOperator#_exec", "Null property |%s|. Remove options from select element |%s|.", propertyPath, element);
+			element.removeChildren();
+		}
+		else {
+			$debug("js.dom.template.OptionsOperator#_exec", "Load select element |%s| options from property |%s|.", element, propertyPath);
+			element.setOptions(options);
+		}
+		return undefined;
+	},
+
+	_reset : function(element) {
+		element.removeChildren();
+	},
+
+	toString : function() {
+		return "js.dom.template.OptionsOperator";
+	}
+};
+$extends(js.dom.template.OptionsOperator, js.dom.template.Operator);
 $package("js.dom.template");
 
 js.dom.template.SrcOperator = function(content) {

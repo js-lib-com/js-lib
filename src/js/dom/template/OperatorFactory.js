@@ -51,6 +51,7 @@ js.dom.template.OperatorFactory.prototype = {
         this[Opcode.OLIST] = new js.dom.template.OListOperator(this._template, content);
         this[Opcode.MAP] = new js.dom.template.MapOperator(this._template, content);
         this[Opcode.OMAP] = new js.dom.template.OMapOperator(this._template, content);
+        this[Opcode.OPTIONS] = new js.dom.template.OptionsOperator(content);
     },
 
     /**

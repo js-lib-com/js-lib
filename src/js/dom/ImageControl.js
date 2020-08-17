@@ -12,6 +12,13 @@ $package("js.dom");
  */
 js.dom.ImageControl = function(ownerDoc, node) {
 	this.$super(ownerDoc, node);
+
+	/**
+	 * Internal flag, true only for control instances. Used to detect that an element is a control.
+	 * 
+	 * @type Boolean
+	 */
+	this.__control__ = true;
 };
 
 js.dom.ImageControl.prototype = {
