@@ -107,6 +107,7 @@ js.dom.ControlsIterable.prototype = {
 				return null;
 			}
 			var element = this._ownerDoc.getElement(node);
+			$assert(element != null, "js.dom.ControlsIterable#_scan", "Null j(s)-element for node |%s|. Probably missing custom class.", js.dom.Node.toString(node));
 			return element.__control__ ? element : null;
 		}.bind(this);
 

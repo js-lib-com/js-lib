@@ -27,7 +27,7 @@
 	</target>
 
 	<target name="development-pack">
-		<js.PackScriptArchive sourcepath="${SRC}" filename="${CLIENT-JS.DEV}" omnideps="legacy,bootstrap" verbose="yes" debug="yes" nice="yes" removeApiDoc="true" removeAssertions="true" />
+		<js.PackScriptArchive sourcepath="${SRC}" filename="${CLIENT-JS.DEV}" omnideps="legacy,bootstrap" verbose="yes" debug="yes" nice="yes" removeApiDoc="true" removeAssertions="false" />
 	</target>
 
 	<target name="production-pack">

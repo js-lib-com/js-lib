@@ -803,8 +803,11 @@ js.lang.Operator = {
 		// for now is acceptable
 
 		if (args.length == 2) {
+			$assert(js.lang.Types.isFunction(args[0][functionName]), "js.lang.Operator#$name", "Invalid searching context |%s|. Missing |%s| function.", args[0], functionName);
+			$assert(js.lang.Types.isString(args[1]), "js.lang.Operator#$name", "Search criterion parameter is not a string.");
 			return args[0][functionName](args[1]);
 		}
+		$assert(js.lang.Types.isString(args[0]), "js.lang.Operator#$name", "Search criterion parameter is not a string.");
 		return WinMain.doc[functionName](args[0]);
 	},
 
@@ -1101,6 +1104,7 @@ $package("js.net");
 $include("js.lang.Types");
 
 js.net.URL = function() {
+	$assert(js.lang.Types.isString(arguments[0]), "js.net.URL#URL", "URL is not a string.");
 	var url;
 
 	if (!(this instanceof js.net.URL)) {
@@ -1108,6 +1112,12 @@ js.net.URL = function() {
 		if (arguments.length > 1) {
 			url += js.net.URL.formatQuery(arguments[1]);
 		}
+		$assert((function() {
+			var rex = js.net.URL.prototype._FULL_URL_REX;
+			rex.lastIndex = 0;
+			var m = rex.exec(url);
+			return m !== null && m.length === 7;
+		})(), "js.net.URL#URL", "Malformed URL value: [%s]", url);
 		return url;
 	}
 
@@ -1115,6 +1125,7 @@ js.net.URL = function() {
 		url = js.net.URL.normalize(arguments[0]);
 		this._FULL_URL_REX.lastIndex = 0;
 		var m = this._FULL_URL_REX.exec(url);
+		$assert(m !== null && m.length === 7, "js.net.URL#URL", "Malformed URL value |%s|", arguments[0]);
 		this._init(m);
 
 		this.parameters = this.query ? js.net.URL.parseQuery(this.query) : {};
@@ -1124,6 +1135,8 @@ js.net.URL = function() {
 	}
 
 	if (arguments.length === 2) {
+		$assert(js.lang.Types.isObject(arguments[1]), "js.net.URL#URL", "Parameters is not an object.");
+
 		url = js.net.URL.normalize(arguments[0]);
 		this.parameters = arguments[1];
 		var query = js.net.URL.formatQuery(this.parameters);
@@ -1131,12 +1144,14 @@ js.net.URL = function() {
 
 		this._SHORT_URL_REX.lastIndex = 0;
 		var m = this._SHORT_URL_REX.exec(url);
+		$assert(m !== null && m.length === 5, "js.net.URL#URL", "Malformed URL value |%s|", arguments[0]);
 		m[5] = query.substr(1);
 		this._init(m);
 	}
 };
 
 js.net.URL.getHost = function(url) {
+	$assert(url, "js.net.URL#getHost", "URL is undefined, null or empty.");
 	if (url) {
 		var startIndex = url.indexOf("://");
 		if (startIndex !== -1) {
@@ -1156,6 +1171,7 @@ js.net.URL.getHost = function(url) {
 };
 
 js.net.URL.parseQuery = function(query) {
+	$assert(query, "js.net.URL#parseQuery", "Query is undefined, null or empty.");
 	if (query) {
 		var parameters = {};
 		var a = query.split("&");
@@ -1169,6 +1185,7 @@ js.net.URL.parseQuery = function(query) {
 };
 
 js.net.URL.formatQuery = function(parameters) {
+	$assert(parameters, "js.net.URL#formatQuery", "Parameters hash is undefined or null.");
 	var a = [], v;
 	if (parameters) {
 		for ( var p in parameters) {
@@ -1186,6 +1203,7 @@ js.net.URL.formatQuery = function(parameters) {
 };
 
 js.net.URL.absolute = function(path) {
+	$assert(path, "js.net.URL#absolute", "Path is undefined, null or empty.");
 	if (path.charAt(0) !== '/') {
 		path = '/' + path;
 	}
@@ -1275,8 +1293,10 @@ js.event.CustomEvents = function (parent) {
 
 js.event.CustomEvents.prototype = {
     register : function () {
+        $assert(arguments, "js.event.CustomEvents#register", "Missing arguments.");
         for (var i = 0, type; i < arguments.length; ++i) {
             type = arguments[i];
+            $assert(!(type in this._events), "js.event.CustomEvents#register", "Event type already registered.");
             if (!(type in this._events)) {
                 this._events[type] = [];
             }
@@ -1284,9 +1304,11 @@ js.event.CustomEvents.prototype = {
     },
 
     unregister : function () {
+        $assert(arguments, "js.event.CustomEvents#unregister", "Missing arguments.");
         for (var i = 0, type; i < arguments.length; ++i) {
             type = arguments[i];
             if (!(type in this._events)) {
+                $assert(false, "js.event.CustomEvents#unregister", "Event type is not registered.");
                 continue;
             }
             delete this._events[type];
@@ -1294,6 +1316,11 @@ js.event.CustomEvents.prototype = {
     },
 
     addListener : function (type, listener, scope) {
+        $assert(type in this._events, "js.event.CustomEvents#addListener", "Invalid event type.");
+        $assert(listener, "js.event.CustomEvents#addListener", "Listener is undefined or null.");
+        $assert(js.lang.Types.isFunction(listener), "js.event.CustomEvents#addListener", "Listener is not a function.");
+        $assert(js.lang.Types.isObject(scope), "js.event.CustomEvents#addListener", "Scope is not an object.");
+
         var handlers = this._events[type];
         if (handlers) {
             handlers.push({
@@ -1305,11 +1332,15 @@ js.event.CustomEvents.prototype = {
     },
 
     removeListener : function (type, listener) {
+        $assert(type in this._events, "js.event.CustomEvents#removeListener", "Type %s is not defined.", type);
+        $assert(js.lang.Types.isFunction(listener), "js.event.CustomEvents#removeListener", "Listener is not a function.");
+
         var handlers = this._events[type];
         if (handlers) {
             var i, handler;
             for (i = handlers.length - 1; i >= 0; i--) {
                 handler = handlers[i];
+                $assert(!handler.running, "js.event.CustomEvents#removeListener", "Attempt to remove running listener for %s event.", handler.type);
                 if (!handler.running && handler.listener === listener) {
                     handlers.splice(i, 1);
                 }
@@ -1319,11 +1350,15 @@ js.event.CustomEvents.prototype = {
     },
 
     removeAllListeners : function (type) {
+        $assert(type in this._events, "js.event.CustomEvents#removeAllListeners", "Type %s is not defined.", type);
+        $assert(this.hasListener(type), "js.event.CustomEvents#removeAllListeners", "Type %s has no listeners.", type);
+
         var handlers = this._events[type];
         if (handlers) {
             var i, handler;
             for (i = handlers.length - 1; i >= 0; i--) {
                 handler = handlers[i];
+                $assert(!handler.running, "js.event.CustomEvents#removeAllListener", "Attempt to remove running listener for %s event.", handler.type);
                 if (!handler.running) {
                     handlers.splice(i, 1);
                 }
@@ -1337,12 +1372,16 @@ js.event.CustomEvents.prototype = {
     },
 
     hasListener : function (type) {
+        $assert(type in this._events, "js.event.CustomEvents#hasListener", "Invalid event type.");
         var handlers = this._events[type];
         return handlers ? handlers.length !== 0 : false;
     },
 
     fire : function (type) {
+        $assert(type, "js.event.CustomEvents#fire", "Undefined, null or empty event type");
+
         var handlers = this._events[type];
+        $assert(handlers, "js.event.CustomEvents#fire", "Trying to fire not registered event |%s|.", type);
         if (!handlers) {
             return;
         }
@@ -1373,6 +1412,9 @@ $include("js.net.URL");
 $include("js.event.CustomEvents");
 
 js.ua.Window = function(nativeWindow, properties) {
+	$assert(this instanceof js.ua.Window, "js.ua.Window#Window", "Invoked as function.");
+	$assert(typeof nativeWindow !== "undefined" && nativeWindow !== null, "js.ua.Window#Window", "Native window is undefined or null.");
+
 	if (typeof properties === "undefined") {
 		properties = {};
 	}
@@ -1382,6 +1424,8 @@ js.ua.Window = function(nativeWindow, properties) {
 	this._window = nativeWindow;
 
 	this._parent = properties.parent || null;
+	$assert(this._parent === null || this._parent instanceof js.ua.Window, "js.ua.Window#Window", "Parent is not of proper type.");
+
 	this.url = null;
 	if (properties.crossDomain) {
 		this.url = new js.net.URL(properties.url);
@@ -1516,6 +1560,7 @@ js.ua.Window.prototype = {
 	},
 
 	getTitle : function() {
+		$assert(this.doc !== null, "js.ua.Window#getTitle", "Window document is null.");
 		return document.title || "Untitled";
 	},
 
@@ -1528,6 +1573,10 @@ js.ua.Window.prototype = {
 	},
 
 	scrollTo : function(child, offset, callback, scope) {
+		$assert(js.lang.Types.isElement(child), "js.ua.Window.scrollTo", "Child argument is not a document element.");
+		$assert(child.getOwnerDoc().equals(this.doc), "js.ua.Window.scrollTo", "Child argument does not belong to window document.");
+		$assert(!offset || js.lang.Types.isNumber(offset), "js.ua.Window.scrollTo", "Offset argument is not a number.");
+
 		if (typeof offset === "undefined") {
 			offset = 0;
 		}
@@ -1552,6 +1601,8 @@ js.ua.Window.prototype = {
 			}.bind(this)
 		});
 		if (typeof callback !== "undefined") {
+			$assert(js.lang.Types.isFunction(callback), "js.ua.Window.scrollTo", "Callback argument is not a function.");
+			$assert(js.lang.Types.isStrictObject(scope), "js.ua.Window.scrollTo", "Scope argument is not an object.");
 			anim.on("anim-stop", callback, scope || window);
 		}
 		anim.start();
@@ -1560,6 +1611,7 @@ js.ua.Window.prototype = {
 	_EVENT_STATES : null,
 
 	on : function(type, listener, scope) {
+		$assert(this._state < js.ua.Window.State.FINALIZED, "js.ua.Window#on", "Can't add event listener after instance finalization.");
 		if (this._EVENT_STATES === null) {
 			this._EVENT_STATES = {
 				"dom-ready" : js.ua.Window.State.DOM_READY,
@@ -1578,6 +1630,7 @@ js.ua.Window.prototype = {
 	},
 
 	un : function(type, listener) {
+		$assert(this._state < js.ua.Window.State.FINALIZED, "js.ua.Window#un", "Can't remove event listener after instance finalization.");
 		this._events.removeListener(type, listener);
 		return this;
 	},
@@ -1599,6 +1652,7 @@ js.ua.Window.prototype = {
 		// 'DOMContentLoaded' and 'load' triggers
 		// for theses reasons is possible this method to be enacted before _fireDomReady() set this._state to DOM_READY
 
+		$assert(this._state === js.ua.Window.State.CREATED || this._state === js.ua.Window.State.DOM_READY, "js.ua.Window#_loadHandler", "Invalid state. Expected CREATED or DOM_READY but got %s.", this._stateName());
 		$trace("js.ua.Window#_loadHandler", this._id);
 		this._removeEventListener("load", js.ua.Window.prototype._loadHandler);
 
@@ -1618,6 +1672,7 @@ js.ua.Window.prototype = {
 			this._loadHandler();
 		}
 
+		$assert(this._state === js.ua.Window.State.LOADED, "js.ua.Window#_beforeUnloadHandler", "Invalid state. Expected LOADED but got %s.", this._stateName());
 		$debug("js.ua.Window#_beforeUnloadHandler", "Fire pre-unload event for %s.", this._id);
 		this._removeEventListener("beforeunload", js.ua.Window.prototype._beforeUnloadHandler);
 
@@ -1646,6 +1701,7 @@ js.ua.Window.prototype = {
 			return;
 		}
 
+		$assert(this._state === js.ua.Window.State.BEFORE_UNLOADED, "js.ua.Window#_unloadHandler", "Invalid state. Expected BEFORE_UNLOADED but got %s.", this._stateName());
 		this._removeEventListener("unload", js.ua.Window.prototype._unloadHandler);
 
 		$debug("js.ua.Window#_unloadHandler", "Fire unload event for %s.", this._id);
@@ -1676,10 +1732,13 @@ js.ua.Window.prototype = {
 	},
 
 	_fireDomReady : function() {
+		$assert(this._state === js.ua.Window.State.CREATED, "js.ua.Window#_fireDomReady", "Invalid state. Expected CREATED but got %s.", this._stateName());
+
 		// do not use js.ua.Window.prototype._fireDomReady in order to avoid NOP-ing all window instances
 		this._fireDomReady = js.lang.NOP;
 
 		// complete this instance fields initialization, postponed by constructor in order to avoid hard dependencies
+		$assert(this.url === null, "js.ua.Window#_fireDomReady", "Window URL is not null.");
 		this.url = new js.net.URL(this._window.location.toString());
 		this.doc = new js.dom.Document(this._window.document);
 
@@ -1692,7 +1751,11 @@ js.ua.Window.prototype = {
 		var isWinMain = (this === WinMain);
 
 		if (isWinMain) {
+			$assert(typeof $E === "undefined", "js.ua.Window#_fireDomReady", "Global selector for first element already defined.");
+			$assert(typeof $L === "undefined", "js.ua.Window#_fireDomReady", "Global selector for list of elements already defined.");
+
 			$E = function(selectors) {
+				$assert(selectors, 'js.ua.Page#$E', 'Selectors is undefined, null or empty.');
 				if (arguments.length > 1) {
 					selectors = $format(arguments);
 				}
@@ -1700,6 +1763,7 @@ js.ua.Window.prototype = {
 			};
 
 			$L = function(selectors) {
+				$assert(selectors, 'js.ua.Page#$L', 'Selectors is undefined, null or empty.');
 				if (arguments.length > 1) {
 					selectors = $format(arguments);
 				}
@@ -2000,6 +2064,12 @@ $package("js.dom");
 js.dom.Element = function(ownerDoc, node) {
 	var dataCfg, pairs, value, i;
 
+	$assert(this instanceof js.dom.Element, "js.dom.Element#Element", "Invoked as function.");
+	$assert(ownerDoc, "js.dom.Element#Element", "Undefined or null owner document.");
+	$assert(ownerDoc instanceof js.dom.Document, "js.dom.Element#Element", "Owner document is not an instance of js.dom.Document.");
+	$assert(node, "js.dom.Element#Element", "Undefined or null node.");
+	$assert(node.nodeType === Node.ELEMENT_NODE, "js.dom.Element#Element", "Invalid node type #%d", node.nodeType);
+
 	this._ownerDoc = ownerDoc;
 
 	this._node = node;
@@ -2008,6 +2078,8 @@ js.dom.Element = function(ownerDoc, node) {
 	this.style = new js.dom.Style(this);
 
 	this._format = js.format.Factory.getFormat(js.dom.Node.getFormatName(node));
+	$assert(this._format === null || js.lang.Types.isObject(this._format), "js.dom.Element#Element", "Formatter is not an object.");
+
 	this._config = {};
 	dataCfg = this.getAttr("data-cfg");
 	if (dataCfg !== null) {
@@ -2043,9 +2115,12 @@ js.dom.Element.prototype = {
 	},
 
 	addChild : function() {
+		$assert(arguments.length > 0, "js.dom.Element#addChild", "Missing element to add.");
 		for (var i = 0, a; i < arguments.length; ++i) {
 			a = arguments[i];
+			$assert(a, "js.dom.Element#addChild", "Undefined or null argument.");
 			if (a) {
+				$assert(a instanceof js.dom.Element, "js.dom.Element#addChild", "Argument is not a js.dom.Element.");
 				if (a instanceof js.dom.Element) {
 					if (!this._ownerDoc.equals(a._ownerDoc)) {
 						a = this._ownerDoc.importElement(a);
@@ -2058,6 +2133,7 @@ js.dom.Element.prototype = {
 	},
 
 	addChildFirst : function(children) {
+		$assert(children, "js.dom.Element#addChildFirst", "Undefined or null argument.");
 		var firstChild = this.getFirstChild();
 
 		if (children instanceof js.dom.Element) {
@@ -2085,10 +2161,13 @@ js.dom.Element.prototype = {
 			return this;
 		}
 
+		$assert(false, "js.dom.Element#addChildFirst", "Argument is not element or elist.");
 		return this;
 	},
 
 	replaceChild : function(replacement, existing) {
+		$assert(replacement, "js.dom.Element#replaceChild", "Replacement element is undefined or null.");
+		$assert(existing, "js.dom.Element#replaceChild", "Existing element is undefined or null.");
 		if (replacement && existing) {
 			if (!replacement._ownerDoc.equals(this._ownerDoc)) {
 				replacement = this._ownerDoc.importElement(replacement);
@@ -2099,10 +2178,12 @@ js.dom.Element.prototype = {
 	},
 
 	insertBefore : function(el) {
+		$assert(el, "js.dom.Element#insertBefore", "Element to insert is undefined or null.");
 		if (el) {
 			if (!el._ownerDoc.equals(this._ownerDoc)) {
 				el = this._ownerDoc.importElement(el);
 			}
+			$assert(this._node.parentNode, "js.dom.Element#insertBefore", "This element has no parent.");
 			if (this._node.parentNode) {
 				this._node.parentNode.insertBefore(el._node, this._node);
 			}
@@ -2111,14 +2192,17 @@ js.dom.Element.prototype = {
 	},
 
 	clone : function(deep) {
+		$assert(typeof deep === "undefined" || js.lang.Types.isBoolean(deep), "js.dom.Element#clone", "Deep flag is not boolean.");
 		return this._ownerDoc.getElement(this._node.cloneNode(deep === true));
 	},
 
 	replace : function(replacement) {
+		$assert(replacement, "js.dom.Element#replace", "Replacement element is undefined or null.");
 		if (replacement) {
 			if (!replacement._ownerDoc.equals(this._ownerDoc)) {
 				replacement = this._ownerDoc.importElement(replacement);
 			}
+			$assert(this._node.parentNode, "js.dom.Element#replace", "This element have not a parent.");
 			if (this._node.parentNode) {
 				this._node.parentNode.replaceChild(replacement._node, this._node);
 			}
@@ -2126,6 +2210,7 @@ js.dom.Element.prototype = {
 	},
 
 	remove : function(clear) {
+		$assert(typeof clear === "undefined" || clear === false, "js.dom.Element#remove", "Clear flag is not false.");
 		if (clear === false) {
 			this._node.parentNode.removeChild(this._node);
 			return this;
@@ -2171,51 +2256,62 @@ js.dom.Element.prototype = {
 
 	getByIndex : function(index) {
 		var children = this._node.children;
+		$assert(0 <= index && index < children.length, "js.dom.Element#getByIndex", "Index argument out of range.");
 		return this._ownerDoc.getElement(children[index]);
 	},
 
 	getByClass : function(clazz) {
-		var node = js.dom.Node.getElementByClass(this._node, clazz);
-		return this._ownerDoc.getElement(node);
+		$assert(clazz, "js.dom.Element#getByClass", "Class is undefined, null or empty.");
+		return this._ownerDoc.getElement(js.dom.Node.getElementByClass(this._node, clazz));
 	},
 
 	getByXPath : function(xpath) {
+		$assert(xpath, "js.dom.Element#getByXPath", "XPath expression is undefined, null or empty.");
 		return this._ownerDoc.evaluateXPathNode(this._node, $format(arguments));
 	},
 
 	findByXPath : function(xpath) {
+		$assert(xpath, "js.dom.Element#findByXPath", "XPath expression is undefined, null or empty.");
 		return this._ownerDoc.evaluateXPathNodeList(this._node, $format(arguments));
 	},
 
 	getByCss : function(selectors) {
+		$assert(selectors, "js.dom.Element#getByCss", "CSS selectors is undefined, null or empty.");
 		return this._ownerDoc.getElement(js.dom.Node.querySelector(this._node, $format(arguments)));
 	},
 
 	findByCss : function(selectors) {
+		$assert(selectors, "js.dom.Element#findByCss", "CSS selectors is undefined, null or empty.");
 		return this._ownerDoc.getEList(js.dom.Node.querySelectorAll(this._node, $format(arguments)));
 	},
 
 	getByTag : function(tag) {
+		$assert(tag, "js.dom.Element#getByTag", "Tag name is undefined, null or empty.");
 		return this._ownerDoc.getElement(js.dom.Node.getElementsByTagName(this._node, tag));
 	},
 
 	findByTag : function(tag) {
+		$assert(tag, "js.dom.Element#findByTag", "Tag name is undefined, null or empty.");
 		return this._ownerDoc.getEList(js.dom.Node.getElementsByTagName(this._node, tag));
 	},
 
 	getByCssClass : function(cssClass) {
+		$assert(cssClass, "js.dom.Element#getByCssClass", "CSS class is undefined, null or empty.");
 		return this._ownerDoc.getElement(js.dom.Node.getElementsByClassName(this._node, cssClass));
 	},
 
 	findByCssClass : function(cssClass) {
+		$assert(cssClass, "js.dom.Element#findByCssClass", "CSS class is undefined, null or empty.");
 		return this._ownerDoc.getEList(js.dom.Node.getElementsByClassName(this._node, cssClass));
 	},
 
 	getByName : function(name) {
+		$assert(name, "js.dom.Element#getByName", "Name is undefined, null or empty.");
 		return this._ownerDoc.getElement(js.dom.Node.querySelector(this._node, $format("[name='%s'],[data-name='%s']", name, name)));
 	},
 
 	findByName : function(name) {
+		$assert(name, "js.dom.Element#findByName", "Name is undefined, null or empty.");
 		return this._ownerDoc.getEList(js.dom.Node.querySelectorAll(this._node, $format("[name='%s'],[data-name='%s']", name, name)));
 	},
 
@@ -2289,18 +2385,23 @@ js.dom.Element.prototype = {
 	},
 
 	setAttr : function() {
+		$assert(arguments.length >= 2, "js.dom.Element#setAttr", "Missing attribute name and/or value.");
+		$assert(arguments.length % 2 === 0, "js.dom.Element#setAttr", "Odd number of arguments.");
 		if (arguments.length > 2) {
 			for (var i = 0, l = arguments.length - 1; i < l;) {
 				this.setAttr(arguments[i++], arguments[i++]);
 			}
 		}
 		else if (arguments.length === 2) {
+			$assert(js.lang.Types.isString(arguments[0]), "js.dom.Element#setAttr", "Attribute name is not a string.");
+			$assert(js.lang.Types.isString(arguments[1]), "js.dom.Element#setAttr", "Attribute value is not a string.");
 			this._node.setAttribute(arguments[0], arguments[1]);
 		}
 		return this;
 	},
 
 	getAttr : function(name) {
+		$assert(name, "js.dom.Element#getAttr", "Attribute name is undefined, null or empty.");
 		if (this._node.attributes.length > 0) {
 			var attr = this._node.attributes.getNamedItem(name);
 			if (attr !== null) {
@@ -2311,6 +2412,7 @@ js.dom.Element.prototype = {
 	},
 
 	removeAttr : function(name) {
+		$assert(name, "js.dom.Element#removeAttr", "Attribute name is undefined, null or empty.");
 		if (name) {
 			this._node.removeAttribute(name);
 		}
@@ -2321,10 +2423,12 @@ js.dom.Element.prototype = {
 		if (this._node.attributes.length === 0) {
 			return false;
 		}
+		$assert(name, "js.dom.Element#hasAttr", "Attribute name is undefined, null or empty.");
 		return this._node.attributes.getNamedItem(name) !== null;
 	},
 
 	addText : function(text) {
+		$assert(text, "js.dom.Element#addText", "Text is undefined, null or empty.");
 		if (text) {
 			// W3C DOM Document interface mandates string for createTextNode argument
 			if (!js.lang.Types.isString(text)) {
@@ -2336,6 +2440,8 @@ js.dom.Element.prototype = {
 	},
 
 	setText : function(text) {
+		$assert(typeof text !== "undefined", "js.dom.Element#setText", "Text argument is undefined.");
+
 		// refrain to use if(!text) {...} since number 0 is included too
 		if (!(typeof text !== "undefined" && text !== null && text !== "")) {
 			return this.removeText();
@@ -2396,6 +2502,7 @@ js.dom.Element.prototype = {
 	},
 
 	addCssClass : function(cssClass, enabled) {
+		$assert(cssClass, "js.dom.Element#addCssClass", "CSS class is undefined, null or empty.");
 		if (cssClass) {
 			if (typeof enabled === "undefined") {
 				enabled = true;
@@ -2411,6 +2518,7 @@ js.dom.Element.prototype = {
 	},
 
 	removeCssClass : function(cssClass) {
+		$assert(cssClass, "js.dom.Element#removeCssClass", "CSS class is undefined, null or empty.");
 		if (cssClass) {
 			this._node.classList.remove(cssClass);
 		}
@@ -2418,6 +2526,7 @@ js.dom.Element.prototype = {
 	},
 
 	toggleCssClass : function(cssClass) {
+		$assert(cssClass, "js.dom.Element#toggleCssClass", "CSS class is undefined, null or empty.");
 		if (cssClass) {
 			this._node.classList.toggle(cssClass);
 		}
@@ -2425,6 +2534,7 @@ js.dom.Element.prototype = {
 	},
 
 	hasCssClass : function(cssClass) {
+		$assert(cssClass, "js.dom.Element#hasCssClass", "CSS class is undefined, null or empty.");
 		if (!cssClass) {
 			return false;
 		}
@@ -2463,6 +2573,9 @@ js.dom.Element.prototype = {
 	// ------------------------------------------------------------------------
 
 	setValue : function(value) {
+		$assert(typeof value !== "undefined", "js.dom.Element#setValue", "Value is undefined.");
+		$assert(!this.hasChildren(), "js.dom.Element#setValue", "Unsupported state: this element has children.");
+
 		if (typeof value === "undefined") {
 			return this;
 		}
@@ -2473,15 +2586,20 @@ js.dom.Element.prototype = {
 		if (this._format !== null) {
 			value = this._format.format(value);
 		}
+		$assert(js.lang.Types.isPrimitive(value), "js.dom.Element#setValue", "Expected primitive but got %s.", value);
 		return this.setText(value);
 	},
 
 	getValue : function() {
+		$assert(!this.hasChildren(), "js.dom.Element#getValue", "Unsupported state: this element has children.");
 		var v = this.getText();
 		return this._format !== null ? this._format.parse(v) : v.length > 0 ? v : null;
 	},
 
 	setObject : function(value) {
+		$assert(!arguments.callee.__super_call__, "js.dom.Element#setObject", "$super call on setObject from subclass is not allowed! It creates circular dependencies.");
+		$assert(!js.lang.Types.isPrimitive(value), "js.dom.Element#setObject", "Primitive value not supported.");
+		$assert(js.lang.Types.isArray(value) || this.hasChildren(), "js.dom.Element#setObject", "Unsupported state: this element has no child.");
 		this._ownerDoc._template.injectElement(this, value);
 		return this;
 	},
@@ -2493,6 +2611,7 @@ js.dom.Element.prototype = {
 		var templateElement = this.getUserData(TEMPLATE_USER_DATA);
 		if (templateElement == null) {
 			templateElement = this.getFirstChild();
+			$assert(templateElement != null, "js.dom.Element#addObject", "Unsupported state: this element has no child.");
 			templateElement.remove(false);
 			templateElement._ownerDoc = this._ownerDoc;
 			this.setUserData(TEMPLATE_USER_DATA, templateElement);
@@ -2511,6 +2630,7 @@ js.dom.Element.prototype = {
 	},
 
 	addHTML : function(html) {
+		$assert(html, "js.dom.Element#setHTML", "HTML fragment is undefined, null or empty.");
 		if (html) {
 			var range = this._ownerDoc.getDocument().createRange();
 			range.selectNode(this._node);
@@ -2521,6 +2641,7 @@ js.dom.Element.prototype = {
 	},
 
 	setHTML : function(html) {
+		$assert(html, "js.dom.Element#setHTML", "HTML fragment is undefined, null or empty.");
 		// ensure all children are properly clean-up before set new HTML content
 		this.removeChildren();
 		if (html) {
@@ -2568,6 +2689,7 @@ js.dom.Element.prototype = {
 	},
 
 	setUserData : function(key, data) {
+		$assert(key, "js.dom.Element#setUserData", "Key is undefined, null or empty.");
 		if (!key) {
 			return null;
 		}
@@ -2591,6 +2713,7 @@ js.dom.Element.prototype = {
 		if (typeof key === "undefined") {
 			key = "value";
 		}
+		$assert(key, "js.dom.Element#getUserData", "Key is null or empty.");
 		if (!key) {
 			return null;
 		}
@@ -2602,6 +2725,7 @@ js.dom.Element.prototype = {
 	},
 
 	removeUserData : function(key) {
+		$assert(key, "js.dom.Element#removeUserData", "Key is undefined, null or empty.");
 		if (!key) {
 			return null;
 		}
@@ -2653,6 +2777,7 @@ js.dom.Element.prototype = {
 		if (typeof guard === "undefined") {
 			guard = 0;
 		}
+		$assert(guard < 8, "js.dom.Element#_clean", "Too many recursive iterations.");
 		if (guard === 8) {
 			return;
 		}
@@ -2757,12 +2882,14 @@ js.dom.Element.prototype.$L = js.dom.Element.prototype.findByCss;
 
 $legacy(js.ua.Engine.TRIDENT, function() {
 	js.dom.Element.prototype.clone = function(deep) {
+		$assert(typeof deep === "undefined" || js.lang.Types.isBoolean(deep), "js.dom.Element#clone", "Deep flag is not boolean.");
 		var clone = this._node.cloneNode(deep === true);
 		this._ieCloneWorkaround(this, clone, 0);
 		return this._ownerDoc.getElement(clone);
 	};
 
 	js.dom.Element.prototype._ieCloneWorkaround = function(originalElement, cloneNode, guard) {
+		$assert(guard < 8, "js.dom.Element#_ieCloneWorkaround", "Too many recursive iterations.");
 		if (guard === 8) {
 			return;
 		}
@@ -2788,6 +2915,7 @@ $legacy(js.ua.Engine.TRIDENT, function() {
 	};
 
 	js.dom.Element.prototype.addHTML = function(html) {
+		$assert(html, "js.dom.Element#setHTML", "HTML fragment is undefined, null or empty.");
 		if (html) {
 			this._node.insertAdjacentHTML("beforeEnd", html);
 		}
@@ -2805,6 +2933,7 @@ $legacy(js.ua.Engine.TRIDENT, function() {
 
 $legacy(js.ua.Engine.TRIDENT || js.ua.Engine.MOBILE_WEBKIT, function() {
 	js.dom.Element.prototype.addCssClass = function(cssClass, enabled) {
+		$assert(cssClass, "js.dom.Element#addCssClass", "CSS class is undefined, null or empty.");
 		if (cssClass) {
 			if (typeof enabled === "undefined") {
 				enabled = true;
@@ -2826,6 +2955,7 @@ $legacy(js.ua.Engine.TRIDENT || js.ua.Engine.MOBILE_WEBKIT, function() {
 	};
 
 	js.dom.Element.prototype.removeCssClass = function(cssClass) {
+		$assert(cssClass, "js.dom.Element#removeCssClass", "CSS class is undefined, null or empty.");
 		if (cssClass) {
 			var re = new RegExp("(?:^|\\s+)" + js.util.Strings.escapeRegExp(cssClass) + "(?:\\s+|$)", "g");
 			if (re.test(this._node.className)) {
@@ -2836,6 +2966,7 @@ $legacy(js.ua.Engine.TRIDENT || js.ua.Engine.MOBILE_WEBKIT, function() {
 	};
 
 	js.dom.Element.prototype.toggleCssClass = function(cssClass) {
+		$assert(cssClass, "js.dom.Element#toggleCssClass", "CSS class is undefined, null or empty.");
 		if (cssClass) {
 			this[this.hasCssClass(cssClass) ? "removeCssClass" : "addCssClass"](cssClass);
 		}
@@ -2843,6 +2974,7 @@ $legacy(js.ua.Engine.TRIDENT || js.ua.Engine.MOBILE_WEBKIT, function() {
 	};
 
 	js.dom.Element.prototype.hasCssClass = function(cssClass) {
+		$assert(cssClass, "js.dom.Element#hasCssClass", "CSS class is undefined, null or empty.");
 		if (!cssClass) {
 			return false;
 		}
@@ -2853,11 +2985,14 @@ $legacy(js.ua.Engine.TRIDENT || js.ua.Engine.MOBILE_WEBKIT, function() {
 $package('js.dom');
 
 js.dom.Anchor = function(ownerDoc, node) {
+	$assert(this instanceof js.dom.Anchor, 'js.dom.Anchor#Anchor', 'Invoked as function.');
 	this.$super(ownerDoc, node);
-	};
+	$assert(node.nodeName.toLowerCase() === 'a', 'js.dom.Anchor#Anchor', 'Node is not an anchor.');
+};
 
 js.dom.Anchor.prototype = {
 	setHref : function(href) {
+		$assert(href, 'js.dom.Anchor#setHref', 'HREF is undefined, null or empty.');
 		if (href) {
 			this.setAttr('href', href);
 		}
@@ -2877,18 +3012,22 @@ $package('js.dom');
 
 js.dom.Builder = {
 	createXML : function(root) {
+		$assert(root, 'js.dom.Builder#createXML', 'Root is undefined, null or empty.');
 		return new js.dom.Document(window.document.implementation.createDocument('', root, null));
 	},
 
 	parseXML : function(xml) {
+		$assert(xml, 'js.dom.Builder#parseXML', 'XML is undefined, null or empty.');
 		return this._parse(xml, 'text/xml');
 	},
 
 	parseHTML : function(html) {
+		$assert(html, 'js.dom.Builder#parseHTML', 'HTML is undefined, null or empty.');
 		return this._parse(html, 'application/xhtml+xml');
 	},
 
 	_parse : function(source, contentType) {
+		$assert(source, 'js.dom.Builder#_parse', 'Source is undefined, null or empty.');
 		var document = new DOMParser().parseFromString(source, contentType);
 		if (typeof document === 'undefined') {
 			throw new js.dom.DomException('Missing DOM parser support.');
@@ -2912,6 +3051,9 @@ js.dom.Builder = {
 	},
 
 	_load : function(url, contentType, callback, scope) {
+		$assert(url, 'js.dom.Builder#_load', 'URL is undefined, null or empty.');
+		$assert(js.lang.Types.isFunction(callback), 'js.dom.Builder#_load', 'Callback is not a function.');
+		$assert(this._pageDomain === js.net.URL.getHost(url), 'js.dom.Builder#_load', 'Cross-domain URL.');
 		if (!url || !js.lang.Types.isFunction(callback)) {
 			return;
 		}
@@ -2940,6 +3082,7 @@ $legacy(js.ua.Engine.TRIDENT, function() {
 	};
 
 	js.dom.Builder._parse = function(source, contentType) {
+		$assert(source, 'js.dom.Builder#_parse', 'Source is undefined, null or empty.');
 		var doc = new ActiveXObject('MSXML2.DOMDocument');
 		doc.async = false;
 		doc.loadXML(source);
@@ -2982,6 +3125,7 @@ js.dom.ControlInterface = {
 $package("js.dom");
 
 js.dom.Control = function(ownerDoc, node) {
+	$assert(this instanceof js.dom.Control, "js.dom.Control#Control", "Invoked as function.");
 	this.$super(ownerDoc, node);
 
 	this.__control__ = true;
@@ -2998,17 +3142,21 @@ js.dom.Control.prototype = {
 			name = this.getAttr("data-name");
 		}
 		else {
-			}
+			$assert(!this._node.hasAttribute("data-name"), "js.dom.Control#getName", "Both <name> and <data-name> attributes present on control |%s|.", this);
+		}
+		$assert(name !== null, "js.dom.Control#getName", "Control |%s| has no name.", this);
 		return name;
 	},
 
 	setValue : function(value) {
 		this.removeCssClass(this.CSS_INVALID);
 
+		$assert(typeof value !== "undefined", "js.dom.Control#setValue", "Value is undefined.");
 		if (typeof value === "undefined") {
 			return this;
 		}
 
+		$assert(this.getAttr("type") === "hidden" || this.style.get("display") !== "none", "js.dom.Control#setValue", "Display is none.");
 		if (value === null) {
 			return this._clean();
 		}
@@ -3017,11 +3165,13 @@ js.dom.Control.prototype = {
 			if (this._format !== null) {
 				value = this._format.format(value);
 			}
+			$assert(js.lang.Types.isPrimitive(value), "js.dom.Control#setValue", "Expected primitive but got |%s|.", value);
 			if (!js.lang.Types.isString(value)) {
 				value = value.toString();
 			}
 		}
 		else {
+			$assert(js.lang.Types.isArray(value), "js.dom.Control#setValue", "Mutiple values control expected array but got |%s|.", value);
 			if (value.length === 0) {
 				return this._clean();
 			}
@@ -3137,6 +3287,9 @@ js.dom.Control.prototype = {
 	},
 
 	forEachItem : function(callback, scope) {
+		$assert(js.lang.Types.isFunction(callback), "js.dom.Control#forEachItem", "Callback argument is not a function.");
+		$assert(typeof scope === "undefined" || js.lang.Types.isStrictObject(scope), "js.dom.Control#forEachItem", "Scope argument is not an object.");
+
 		if (!this.isMultiple()) {
 			callback.call(scope || window, {
 				name : this.getName(),
@@ -3189,8 +3342,10 @@ $implements(js.dom.Control, js.dom.ControlInterface);
 $package("js.dom");
 
 js.dom.Button = function (ownerDoc, node) {
+    $assert(this instanceof js.dom.Button, "js.dom.Button#Button", "Invoked as function.");
     this.$super(ownerDoc, node);
-    };
+    $assert(node.nodeName.toLowerCase() === "button", "js.dom.Button#Button", "Node is not an input.");
+};
 
 js.dom.Button.prototype = {
     setValue : function (name) {
@@ -3217,8 +3372,10 @@ $extends(js.dom.Button, js.dom.Control);
 $package('js.dom');
 
 js.dom.Checkbox = function(ownerDoc, node) {
+	$assert(this instanceof js.dom.Checkbox, 'js.dom.Checkbox#Checkbox', 'Invoked as function.');
 	this.$super(ownerDoc, node);
-	};
+	$assert(node.nodeName.toLowerCase() === 'input', 'js.dom.Checkbox#Checkbox', 'Node is not an input.');
+};
 
 js.dom.Checkbox.prototype = {
 	setValue : function(checked) {
@@ -3263,6 +3420,8 @@ $extends(js.dom.Checkbox, js.dom.Control);
 $package("js.dom");
 
 js.dom.ControlsIterable = function(controlsContainer) {
+	$assert(js.lang.Types.isElement(controlsContainer), "js.dom.ControlsIterable#ControlsIterable", "Controls container parameter is not a document element.");
+
 	this._ownerDoc = controlsContainer.getOwnerDoc();
 
 	this._rootNode = controlsContainer.getNode();
@@ -3270,10 +3429,14 @@ js.dom.ControlsIterable = function(controlsContainer) {
 
 js.dom.ControlsIterable.prototype = {
 	forEach : function(callback, scope) {
+		$assert(js.lang.Types.isFunction(callback), "js.dom.ControlsIterable#forEach", "Callback parameter is not a function.");
+		$assert(typeof scope === "undefined" || js.lang.Types.isStrictObject(scope), "js.dom.ControlsIterable#forEach", "Scope parameter is not an object.");
 		this._scan(this._rootNode, false, callback, scope || window);
 	},
 
 	forEachAll : function(callback, scope) {
+		$assert(js.lang.Types.isFunction(callback), "js.dom.ControlsIterable#forEachAll", "Callback parameter is not a function.");
+		$assert(typeof scope === "undefined" || js.lang.Types.isStrictObject(scope), "js.dom.ControlsIterable#forEachAll", "Scope parameter is not an object.");
 		this._scan(this._rootNode, true, callback, scope || window);
 	},
 
@@ -3296,6 +3459,7 @@ js.dom.ControlsIterable.prototype = {
 				return null;
 			}
 			var element = this._ownerDoc.getElement(node);
+			$assert(element != null, "js.dom.ControlsIterable#_scan", "Null j(s)-element for node |%s|. Probably missing custom class.", js.dom.Node.toString(node));
 			return element.__control__ ? element : null;
 		}.bind(this);
 
@@ -3327,6 +3491,10 @@ $extends(js.dom.ControlsIterable, Object);
 $package("js.dom");
 
 js.dom.Document = function (document) {
+    $assert(this instanceof js.dom.Document, "js.dom.Document#Document", "Invoked as function.");
+    $assert(document, "js.dom.Document#Document", "Undefined or null native document.");
+    $assert(document.nodeType === Node.DOCUMENT_NODE, "js.dom.Document#Document", "Invalid document type #%d", document.nodeType);
+
     this._document = document;
 
     this._template = js.dom.template.Template.getInstance(this);
@@ -3344,6 +3512,8 @@ js.dom.Document.prototype = {
     },
 
     createElement : function (tag) {
+        $assert(tag, "js.dom.Document#createElement", "Undefined, null or empty tag name.");
+        $assert(arguments.length % 2 === 1, "js.dom.Document#createElement", "Invalid attributes name/value.");
         if (!tag) {
             return null;
         }
@@ -3358,6 +3528,8 @@ js.dom.Document.prototype = {
     },
 
     createElementForClass : function (tag, className) {
+        $assert(tag, "js.dom.Document#createElementForClass", "Undefined, null or empty tag name.");
+        $assert(className, "js.dom.Document#createElementForClass", "Undefined, null or empty class name.");
         if (!tag || !className) {
             return null;
         }
@@ -3368,9 +3540,11 @@ js.dom.Document.prototype = {
     },
 
     importElement : function (el) {
+        $assert(el, "js.dom.Document#importElement", "Undefined or null foreign element.");
         if (!el) {
             return null;
         }
+        $assert(!el._ownerDoc.equals(this), "js.dom.Document#importElement", "Element is not foreign.");
         if (el._ownerDoc.equals(this)) {
             return el;
         }
@@ -3386,6 +3560,7 @@ js.dom.Document.prototype = {
     },
 
     getById : function (id) {
+        $assert(id, "js.dom.Document#getById", "ID is undefined or null.");
         var node = this._getNodeById(id);
         return node ? this.getElement(node) : null;
     },
@@ -3396,6 +3571,7 @@ js.dom.Document.prototype = {
 
     getByClass : function (clazz) {
         var node = js.dom.Node.getElementByClass(this._document, clazz);
+        $assert(node !== null, "js.dom.Element#getByClass", "Class |%s| not found.", clazz);
         return this.getElement(node);
     },
 
@@ -3412,10 +3588,12 @@ js.dom.Document.prototype = {
     },
 
     getByXPath : function (xpath) {
+        $assert(xpath, "js.dom.Document#getByXPath", "XPath is undefined, null or empty.");
         return this.evaluateXPathNode(this._document, $format(arguments));
     },
 
     findByXPath : function (xpath) {
+        $assert(xpath, "js.dom.Document#findByXPath", "XPath is undefined, null or empty.");
         return this.evaluateXPathNodeList(this._document, $format(arguments));
     },
 
@@ -3442,10 +3620,12 @@ js.dom.Document.prototype = {
     },
 
     getByName : function (name) {
+        $assert(name, "js.dom.Document#getByName", "Name is undefined, null or empty.");
         return this.getElement(js.dom.Node.querySelector(this._document, $format("[name='%s'],[data-name='%s']", name, name)));
     },
 
     findByName : function (name) {
+        $assert(name, "js.dom.Document#findByName", "Name is undefined, null or empty.");
         return this.getEList(js.dom.Node.querySelectorAll(this._document, $format("[name='%s'],[data-name='%s']", name, name)));
     },
 
@@ -3477,18 +3657,32 @@ js.dom.Document.prototype = {
     },
 
     _evaluate : function (node, xpath, type) {
+        $assert(this.isXML(), "js.dom.Document#_evaluate", "XPath evaluation is working only on XML documents.");
+
+        $assert(js.lang.Types.isFunction(this._document.evaluate), "js.dom.Document#_evaluate", "Missing XPath evaluation support.");
+        $assert(node.nodeType === Node.DOCUMENT_NODE || node.nodeType === Node.ELEMENT_NODE, "js.dom.Document#_evaluate", "Invalid node type #%d", node.nodeType);
+        $assert(xpath, "js.dom.Document#_evaluate", "Undefined, null or empty XPath expression.");
+        $assert(js.lang.Types.isNumber(type), "js.dom.Document#_evaluate", "Type argument is not a number.");
+
         var xpathResult = this._document.evaluate(xpath, node, null, type, null);
+        $assert(xpathResult, "js.dom.Document#_evaluate", "Null or undefined XPathResult.");
+        $assert(xpathResult instanceof XPathResult, "js.dom.Document#_evaluate", "Object returned by XPath evaluation is not instance of XPathResult.");
+        $assert(xpathResult.resultType === type, "js.dom.Document#_evaluate", "Object returned by XPath evaluation has unexpected result type.");
+
         if (type === this.XPATH_NODE) {
             node = xpathResult.singleNodeValue;
             if (node === null) {
                 return null;
             }
+            $assert(node.nodeType === Node.ELEMENT_NODE, "js.dom.Document#_evaluate", "Invalid result node type |%d|. Only NODE_ELEMENT supported.", node.nodeType);
             return node.nodeType === Node.ELEMENT_NODE ? node : null;
         }
 
+        $assert(!xpathResult.invalidIteratorState, "js.dom.Document#evaluateXPathNodeList", "Invalid iterator state.");
         var elementsArray = [], node = xpathResult.iterateNext();
         // collect only element nodes from result; assert node type is element
         while (node !== null) {
+            $assert(node.nodeType === Node.ELEMENT_NODE, "js.dom.Document#_evaluate", "Invalid result node type |%d|. Only NODE_ELEMENT supported.", node.nodeType);
             if (node.nodeType === Node.ELEMENT_NODE) {
                 elementsArray.push(node);
             }
@@ -3537,18 +3731,24 @@ js.dom.Document.prototype = {
         if (className === null) {
             className = this._getStandardElementClassName(node);
         }
+        $assert(js.lang.Types.isString(className), "js.dom.Document#getElement", "Class name |%s| is not a string.", className);
+
         // forName implements synchronous lazy loading so next call may block user interface
         var clazz = js.lang.Class.forName(className);
+        $assert(clazz !== null, "js.dom.Document#getElement", "Undefined class |%s| for node |%s|.", className, js.dom.Node.toString(node));
+
         // HACK if clazz is a native class accept it without performing sanity check
         // TODO update js.lang.Types.isElement to deal with native classes
         if(/^(?:class|function (?:[A-Z]|_class))/.test(clazz)) {
         	return new clazz(this, node);
         }
 
+        $assert(js.lang.Types.isElement(clazz), "js.dom.Document#getElement", "Element class |%s| must extend js.dom.Element.", className);
         return js.lang.Types.isElement(clazz) ? new clazz(this, node) : null;
     },
 
     getEList : function (nodeList) {
+        $assert(nodeList, "js.dom.Document#getEList", "Node list is undefined or null.");
         if (!nodeList) {
             nodeList = new js.dom.NodeList();
         }
@@ -3603,6 +3803,7 @@ js.dom.Document.prototype = {
 
     inject : function (selector, value) {
         var el = this.getByCss(selector);
+        $assert(el !== null, "js.dom.Document#inject", "Bad selector.");
         if (el !== null) {
             this._template.injectElement(el, value);
         }
@@ -3610,6 +3811,8 @@ js.dom.Document.prototype = {
     },
 
     equals : function (doc) {
+        $assert(doc, "js.dom.Document#equals", "Document is undefined or null.");
+        $assert(doc instanceof js.dom.Document, "js.dom.Document#equals", "Bad argument type.");
         if (!(doc && doc instanceof js.dom.Document)) {
             return false;
         }
@@ -3624,8 +3827,14 @@ $extends(js.dom.Document, Object);
 
 $legacy(js.ua.Engine.TRIDENT, function () {
     js.dom.Document.prototype._evaluate = function (node, xpath, type) {
+        $assert(this.isXML(), "js.dom.Document#_evaluate", "XPath evaluation is working only on XML documents.");
+
         // select language compatibility; without it IE uses a private variant with couple differences
         this._document.setProperty("SelectionLanguage", "XPath");
+
+        $assert(node.nodeType === Node.DOCUMENT_NODE || node.nodeType === Node.ELEMENT_NODE, "js.dom.Document#_evaluate", "Invalid node type #%d", node.nodeType);
+        $assert(xpath, "js.dom.Document#_evaluate", "Undefined, null or empty XPath expression.");
+        $assert(js.lang.Types.isNumber(type), "js.dom.Document#_evaluate", "Type argument is not a number.");
 
         if (node.nodeType === Node.ELEMENT_NODE) {
             // prefix xpath expression with path to node from document root
@@ -3635,6 +3844,7 @@ $legacy(js.ua.Engine.TRIDENT, function () {
         if (type === this.XPATH_NODE) {
             return nodeList.item(0);
         }
+        $assert(type === this.XPATH_NODESET, "js.dom.Document#_evaluate", "Type argument |%d| is not supported.", type);
         return nodeList;
     };
 
@@ -3708,6 +3918,8 @@ $legacy(js.ua.Engine.PRESTO, function () {
 $package('js.lang');
 
 js.lang.Exception = function() {
+	$assert(this instanceof js.lang.Exception, 'js.lang.Exception#Exception', 'Invoked as function.');
+
 	this.name = 'j(s)-lib exception';
 
 	this.message = js.lang.Types.isString(arguments[0]) ? $format(arguments) : "";
@@ -3722,6 +3934,7 @@ $extends(js.lang.Exception, Error);
 $package('js.dom');
 
 js.dom.DomException = function() {
+    $assert(this instanceof js.dom.DomException, 'js.dom.DomException#DomException', 'Invoked as function.');
     this.$super(arguments);
 
     this.name = 'j(s)-lib DOM exception';
@@ -3746,9 +3959,17 @@ js.lang.Iterator = {
 $package("js.dom");
 
 js.dom.EList = function(ownerDoc, nodeList) {
+	$assert(this instanceof js.dom.EList, "js.dom.EList#EList", "Invoked as function.");
+	$assert(ownerDoc, "js.dom.EList#EList", "Undefined or null owner document.");
+	$assert(ownerDoc instanceof js.dom.Document, "js.dom.EList#EList", "Owner document is not an instance of js.dom.Document.");
+
+	$assert(typeof nodeList !== "undefined", "js.dom.EList#EList", "Node list is undefined.");
 	if (nodeList === null) {
 		nodeList = new js.dom.NodeList();
 	}
+	$assert(js.lang.Types.isNodeList(nodeList), "js.dom.EList#EList", "Argument supplied as node list does not implement NodeList interface.");
+	$assert(this._containsOnlyElements(nodeList), "js.dom.EList#EList", "Argument supplied as node list does not contains only NODE_ELEMENT.");
+
 	this._ownerDoc = ownerDoc;
 
 	this._nodeList = nodeList;
@@ -3763,6 +3984,7 @@ js.dom.EList.prototype = {
 		if (typeof index === "undefined") {
 			index = 0;
 		}
+		$assert(index < this._nodeList.length, "js.dom.EList#item", "Index out of range.");
 		return this._ownerDoc.getElement(this._nodeList.item(index));
 	},
 
@@ -3782,6 +4004,7 @@ js.dom.EList.prototype = {
 
 		for (i = 0; i < nodes.length; ++i) {
 			el = this._ownerDoc.getElement(nodes[i]);
+			$assert(el, "js.dom.EList#remove", "List element is undefined or null.");
 			if (el) {
 				el.remove();
 			}
@@ -3795,9 +4018,11 @@ js.dom.EList.prototype = {
 	},
 
 	call : function(methodName) {
+		$assert(methodName, "js.dom.EList#call", "Method name is undefined, null or empty.");
 		var it = this.it(), el;
 		while (it.hasNext()) {
 			el = it.next();
+			$assert(js.lang.Types.isFunction(el[methodName]), "js.dom.EList#call", "Element property is no a function.");
 			if (js.lang.Types.isFunction(el[methodName])) {
 				el[methodName].apply(el, $args(arguments, 1));
 			}
@@ -3808,6 +4033,7 @@ js.dom.EList.prototype = {
 	// ------------------------------------------------------------------------
 
 	forEach : function(callback, scope) {
+		$assert(js.lang.Types.isFunction(callback), "js.dom.EList#forEach", "Callback is not a function.");
 		if (typeof scope === "undefined") {
 			scope = window;
 		}
@@ -3817,6 +4043,7 @@ js.dom.EList.prototype = {
 	},
 
 	map : function(callback, scope) {
+		$assert(js.lang.Types.isFunction(callback), "js.dom.EList#map", "Callback is not a function.");
 		if (typeof scope === "undefined") {
 			scope = window;
 		}
@@ -3925,14 +4152,21 @@ $extends(js.dom.Email, js.dom.Control);
 $package("js.dom");
 
 js.dom.FileInput = function (ownerDoc, node) {
+    $assert(this instanceof js.dom.FileInput, "js.dom.FileInput#FileInput", "Invoked as function.");
     this.$super(ownerDoc, node);
-    };
+    $assert(node.nodeName.toLowerCase() === "input", "js.dom.FileInput#FileInput", "Node is not an input.");
+    $assert(node.getAttribute("type") === "file", "js.dom.FileInput#FileInput", "Node is not a file.");
+};
 
 js.dom.FileInput.prototype = {
     setValue : function (value) {
-        },
+        $assert(false, "js.dom.FileInput#setValue", "Unsupported operation.");
+    },
 
     forEachItem : function (callback, scope) {
+        $assert(js.lang.Types.isFunction(callback), "js.dom.FileInput#forEachItem", "Callback argument is not a function.");
+        $assert(typeof scope === "undefined" || js.lang.Types.isStrictObject(scope), "js.dom.FileInput#forEachItem", "Scope argument is not an object.");
+
         var files = this._node.files;
         for (var i = 0; i < files.length; ++i) {
             callback.call(scope || window, {
@@ -3944,6 +4178,9 @@ js.dom.FileInput.prototype = {
     },
 
     forEachFile : function (callback, scope) {
+        $assert(js.lang.Types.isFunction(callback), "js.dom.FileInput#forEachItem", "Callback argument is not a function.");
+        $assert(typeof scope === "undefined" || js.lang.Types.isStrictObject(scope), "js.dom.FileInput#forEachItem", "Scope argument is not an object.");
+
         var files = this._node.files;
         for (var i = 0; i < files.length; ++i) {
             callback.call(scope || window, files.item(i));
@@ -3958,6 +4195,7 @@ $extends(js.dom.FileInput, js.dom.Control);
 $package("js.dom");
 
 js.dom.Form = function (ownerDoc, node) {
+    $assert(this instanceof js.dom.Form, "js.dom.Form#Form", "Invoked as function.");
     this.$super(ownerDoc, node);
     this.setAttr("novalidate", "novalidate");
     this._node.method = js.net.Method.POST;
@@ -4078,10 +4316,12 @@ js.dom.Form.prototype = {
 
     removeHidden : function (name) {
         var hidden = this.getByCss("input[name='%s']", name);
+        $assert(hidden !== null, "js.dom.Form#removeHidden", "Hidden control |%s| not found.", name);
         if (hidden === null) {
             return this;
         }
         var type = hidden.getAttr("type");
+        $assert(type === "hidden", "js.dom.Form#removeHidden", "Invalid control |%s| type. Expected hidden but got |%s|.", name, type);
         if (type !== "hidden") {
             return this;
         }
@@ -4094,6 +4334,7 @@ js.dom.Form.prototype = {
     },
 
     _setEnctype : function (enctype) {
+        $assert(enctype === "multipart/form-data", "js.dom.Form#_setEnctype", "Form supports only multipart/form-data.");
         this._node.enctype = enctype;
     },
 
@@ -4112,6 +4353,7 @@ $legacy(js.ua.Engine.TRIDENT, function () {
 $package('js.dom');
 
 js.dom.IFrame = function(ownerDoc, node) {
+	$assert(this instanceof js.dom.IFrame, 'js.dom.IFrame#IFrame', 'Invoked as function.');
 	this.$super(ownerDoc, node);
 
 	this._window = null;
@@ -4155,7 +4397,10 @@ $extends(js.dom.IFrame, js.dom.Element);
 $package('js.dom');
 
 js.dom.Image = function(ownerDoc, node) {
+	$assert(this instanceof js.dom.Image, 'js.dom.Image#Image', 'Invoked as function.');
 	this.$super(ownerDoc, node);
+	$assert(node.nodeName.toLowerCase() === 'img', 'js.dom.Image#Image', 'Node is not an image.');
+
 	this._defaultSrc = this.getAttr("data-default");
 	if (this._defaultSrc == null) {
 		this._defaultSrc = this._TRANSPARENT_DOT;
@@ -4226,6 +4471,7 @@ js.dom.Image.prototype = {
 		if (!src) {
 			src = this._node.src;
 		}
+		$assert(src, "js.dom.Image#reload", "Image source is undefined, null or empty.");
 		var random = Math.random().toString(36).substr(2);
 		var i = src.indexOf('?');
 		return this.setSrc(src + (i !== -1 ? '&__random__=' : '?') + random);
@@ -4246,10 +4492,12 @@ js.dom.Image.prototype = {
 	},
 
 	setWidth : function(width) {
+		$assert(js.lang.Types.isNumber(width), "js.dom.Image#setWidth", "Width attribute is not a number.");
 		return this.setAttr("width", width.toString());
 	},
 
 	setHeight : function(height) {
+		$assert(js.lang.Types.isNumber(height), "js.dom.Image#setHeight", "Height attribute is not a number.");
 		return this.setAttr("height", height.toString());
 	},
 
@@ -4342,6 +4590,9 @@ js.dom.ImageControl.prototype = {
 	},
 
 	forEachItem : function(callback, scope) {
+		$assert(js.lang.Types.isFunction(callback), "js.dom.Control#forEachItem", "Callback argument is not a function.");
+		$assert(typeof scope === "undefined" || js.lang.Types.isStrictObject(scope), "js.dom.Control#forEachItem", "Scope argument is not an object.");
+
 		callback.call(scope || window, {
 			name : this.getName(),
 			value : this.getValue()
@@ -4357,300 +4608,354 @@ $implements(js.dom.Control, js.dom.ControlInterface);
 $package("js.dom");
 
 js.dom.Node = {
-    _BACK_REF : "__js_element__",
+	_BACK_REF : "__js_element__",
 
-    _DATA_CLASS : "data-class",
+	_DATA_CLASS : "data-class",
 
-    _DATA_FORMAT : "data-format",
+	_DATA_FORMAT : "data-format",
 
-    setElement : function (node, el) {
-        node[js.dom.Node._BACK_REF] = el;
-    },
+	setElement : function(node, el) {
+		$assert(node.nodeType === Node.ELEMENT_NODE, "js.dom.Node#setElement", "Node is not element.");
+		node[js.dom.Node._BACK_REF] = el;
+	},
 
-    getElement : function (node) {
-        var el = node[js.dom.Node._BACK_REF];
-        return el ? el : null;
-    },
+	getElement : function(node) {
+		$assert(node.nodeType === Node.ELEMENT_NODE, "js.dom.Node#getElement", "Node is not element.");
+		var el = node[js.dom.Node._BACK_REF];
+		return el ? el : null;
+	},
 
-    removeBackRef : function (node) {
-        if (node[js.dom.Node._BACK_REF]) {
-            delete node[js.dom.Node._BACK_REF];
-        }
-    },
+	removeBackRef : function(node) {
+		$assert(node.nodeType === Node.ELEMENT_NODE, "js.dom.Node#removeBackRef", "Node is not element.");
+		if (node[js.dom.Node._BACK_REF]) {
+			delete node[js.dom.Node._BACK_REF];
+		}
+	},
 
-    setElementClassName : function (node, className) {
-        node.setAttribute(this._DATA_CLASS, className);
-    },
+	setElementClassName : function(node, className) {
+		node.setAttribute(this._DATA_CLASS, className);
+	},
 
-    getElementClassName : function (node) {
-        var className = node.getAttribute(this._DATA_CLASS);
-        return className ? className : null;
-    },
+	getElementClassName : function(node) {
+		var className = node.getAttribute(this._DATA_CLASS);
+		return className ? className : null;
+	},
 
-    getFormatName : function (node) {
-        var formatName = node.getAttribute(this._DATA_FORMAT);
-        return formatName ? formatName : null;
-    },
+	getFormatName : function(node) {
+		var formatName = node.getAttribute(this._DATA_FORMAT);
+		return formatName ? formatName : null;
+	},
 
-    firstChild : function (node, nodeType) {
-        return node ? js.dom.Node._getNeighbor(node.firstChild, nodeType || Node.ELEMENT_NODE, "next") : null;
-    },
+	firstChild : function(node, nodeType) {
+		$assert(node, "js.dom.Node#firstChild", "Node is undefined or null.");
+		$assert(nodeType, "js.dom.Node#firstChild", "Node type is undefined or null.");
+		return node ? js.dom.Node._getNeighbor(node.firstChild, nodeType || Node.ELEMENT_NODE, "next") : null;
+	},
 
-    firstElementChild : function (node) {
-        return node ? node.firstElementChild : null;
-    },
+	firstElementChild : function(node) {
+		$assert(node, "js.dom.Node#firstElementChild", "Node is undefined or null.");
+		return node ? node.firstElementChild : null;
+	},
 
-    lastChild : function (node, nodeType) {
-        return node ? js.dom.Node._getNeighbor(node.lastChild, nodeType || Node.ELEMENT_NODE, "previous") : null;
-    },
+	lastChild : function(node, nodeType) {
+		$assert(node, "js.dom.Node#lastChild", "Node is undefined or null.");
+		$assert(nodeType, "js.dom.Node#lastChild", "Node type is undefined or null.");
+		return node ? js.dom.Node._getNeighbor(node.lastChild, nodeType || Node.ELEMENT_NODE, "previous") : null;
+	},
 
-    lastElementChild : function (node) {
-        return node ? node.lastElementChild : null;
-    },
+	lastElementChild : function(node) {
+		$assert(node, "js.dom.Node#lastElementChild", "Node is undefined or null.");
+		return node ? node.lastElementChild : null;
+	},
 
-    nextSibling : function (node, nodeType) {
-        return node ? js.dom.Node._getNeighbor(node.nextSibling, nodeType || Node.ELEMENT_NODE, "next") : null;
-    },
+	nextSibling : function(node, nodeType) {
+		$assert(node, "js.dom.Node#nextSibling", "Node is undefined or null.");
+		$assert(nodeType, "js.dom.Node#nextSibling", "Node is undefined or null.");
+		return node ? js.dom.Node._getNeighbor(node.nextSibling, nodeType || Node.ELEMENT_NODE, "next") : null;
+	},
 
-    nextElementSibling : function (node) {
-        return node ? node.nextElementSibling : null;
-    },
+	nextElementSibling : function(node) {
+		$assert(node, "js.dom.Node#nextElementSibling", "Node is undefined or null.");
+		return node ? node.nextElementSibling : null;
+	},
 
-    previousSibling : function (node, nodeType) {
-        return node ? js.dom.Node._getNeighbor(node.previousSibling, nodeType || Node.ELEMENT_NODE, "previous") : null;
-    },
+	previousSibling : function(node, nodeType) {
+		$assert(node, "js.dom.Node#previousSibling", "Node is undefined or null.");
+		$assert(nodeType, "js.dom.Node#previousSibling", "Node type is undefined or null.");
+		return node ? js.dom.Node._getNeighbor(node.previousSibling, nodeType || Node.ELEMENT_NODE, "previous") : null;
+	},
 
-    previousElementSibling : function (node) {
-        return node ? node.previousElementSibling : null;
-    },
+	previousElementSibling : function(node) {
+		$assert(node, "js.dom.Node#previousElementSibling", "Node is undefined or null.");
+		return node ? node.previousElementSibling : null;
+	},
 
-    childElementCount : function (node) {
-        return node.childElementCount;
-    },
+	childElementCount : function(node) {
+		$assert(node, "js.dom.Node#childElementCount", "Node is undefined or null.");
+		return node.childElementCount;
+	},
 
-    hasChildren : function (node, nodeType) {
-        if (!node) {
-            return false;
-        }
-        return js.dom.Node.firstChild(node, nodeType || Node.ELEMENT_NODE) !== null;
-    },
+	hasChildren : function(node, nodeType) {
+		$assert(node, "js.dom.Node#hasChildren", "Node is undefined or null.");
+		if (!node) {
+			return false;
+		}
+		return js.dom.Node.firstChild(node, nodeType || Node.ELEMENT_NODE) !== null;
+	},
 
-    getElementByClass : function (context, clazz) {
-        var className = js.lang.Types.isFunction(clazz) ? clazz.prototype.toString() : clazz;
-        return js.dom.Node.querySelector(context, "[data-class='" + className + "']");
-    },
+	getElementByClass : function(context, clazz) {
+		$assert(context, "js.dom.Node#getElementByClass", "Context is undefined or null.");
+		$assert(clazz, "js.dom.Node#getElementByClass", "Class is undefined or null.");
+		$assert(js.lang.Types.isFunction(clazz) || js.lang.Types.isString(clazz), "js.dom.Node#getElementByClass", "Class is not function or string.");
 
-    getElementsByClass : function (context, clazz) {
-        var className = js.lang.Types.isFunction(clazz) ? clazz.prototype.toString() : clazz;
-        return js.dom.Node.querySelectorAll(context, "[data-class='" + className + "']");
-    },
+		var className = js.lang.Types.isFunction(clazz) ? clazz.prototype.toString() : clazz;
+		return js.dom.Node.querySelector(context, "[data-class='" + className + "']");
+	},
 
-    getElementsByTagName : function (context, tag) {
-        return context && tag ? context.getElementsByTagName(tag) : new js.dom.NodeList();
-    },
+	getElementsByClass : function(context, clazz) {
+		$assert(context, "js.dom.Node#getElementsByClass", "Context is undefined or null.");
+		$assert(clazz, "js.dom.Node#getElementsByClass", "Class is undefined or null.");
+		$assert(js.lang.Types.isFunction(clazz) || js.lang.Types.isString(clazz), "js.dom.Node#getElementsByClass", "Class is not function or string.");
 
-    getElementsByClassName : function (context, cssClass) {
-        if (!context) {
-            return new js.dom.NodeList();
-        }
-        return context.getElementsByClassName(cssClass);
-    },
+		var className = js.lang.Types.isFunction(clazz) ? clazz.prototype.toString() : clazz;
+		return js.dom.Node.querySelectorAll(context, "[data-class='" + className + "']");
+	},
 
-    querySelector : function (context, selectors) {
-        if (!context) {
-            return null;
-        }
-        if (!selectors) {
-            return null;
-        }
-        try {
-            return context.querySelector(selectors);
-        } catch (e) {
-            // apparently querySelector throws exception only for syntax error on selectors
-            // excerpt from MDN: Throws a SYNTAX_ERR exception if the specified group of selectors is invalid.
-            return null;
-        }
-    },
+	getElementsByTagName : function(context, tag) {
+		$assert(context, "js.dom.Node#getElementsByTagName", "Context is undefined or null.");
+		$assert(tag, "js.dom.Node#getElementsByTagName", "Tag is undefined, null or empty.");
+		return context && tag ? context.getElementsByTagName(tag) : new js.dom.NodeList();
+	},
 
-    querySelectorAll : function (context, selectors) {
-        if (!context) {
-            return new js.dom.NodeList();
-        }
-        if (!selectors) {
-            return new js.dom.NodeList();
-        }
-        try {
-            return context.querySelectorAll(selectors);
-        } catch (e) {
-            // apparently querySelectorAll throws exception only for syntax error on selectors
-            // excerpt from MDN: Throws a SYNTAX_ERR exception if the specified group of selectors is invalid.
-            return new js.dom.NodeList();
-        }
-    },
+	getElementsByClassName : function(context, cssClass) {
+		$assert(context, "js.dom.Node#getElementsByClassName", "Context is undefined or null.");
+		if (!context) {
+			return new js.dom.NodeList();
+		}
+		$assert(cssClass, "js.dom.Node#getElementsByClassName", "CSS class is undefined, null or empty.");
+		$assert(typeof context.getElementsByClassName === "function", "js.dom.Node#getElementsByClassName", "Get elements by class name not supported.");
+		return context.getElementsByClassName(cssClass);
+	},
 
-    _getNeighbor : function (node, nodeType, direction, predicate) {
-        if (!predicate) {
-            predicate = function () {
-                return true;
-            };
-        }
-        while (!!node) {
-            if (node.nodeType === nodeType && predicate(node)) {
-                return node;
-            }
-            node = node[direction + "Sibling"];
-        }
-        return null;
-    },
+	querySelector : function(context, selectors) {
+		$assert(context, "js.dom.Node#querySelector", "Context is undefined or null.");
+		if (!context) {
+			return null;
+		}
+		$assert(selectors, "js.dom.Node#querySelector", "Selectors is undefined, null or empty.");
+		if (!selectors) {
+			return null;
+		}
+		$assert(typeof context.querySelector !== "undefined", "js.dom.Node#querySelector", "Unsupported query selector.");
+		try {
+			return context.querySelector(selectors);
+		} catch (e) {
+			// apparently querySelector throws exception only for syntax error on selectors
+			// excerpt from MDN: Throws a SYNTAX_ERR exception if the specified group of selectors is invalid.
+			$assert(false, "js.dom.Node#querySelector", "bad selectors: ", selectors);
+			return null;
+		}
+	},
 
-    toString : function (node) {
-        if (!node) {
-            return "undefined node";
-        }
-        var s = node.nodeName.toLowerCase();
-        if (s === "input") {
-            s += ("[" + node.getAttribute("type") + "]");
-        }
-        return s;
-    }
+	querySelectorAll : function(context, selectors) {
+		$assert(context, "js.dom.Node#querySelectorAll", "Context is undefined or null.");
+		if (!context) {
+			return new js.dom.NodeList();
+		}
+		$assert(selectors, "js.dom.Node#querySelectorAll", "Selectors is undefined, null or empty.");
+		if (!selectors) {
+			return new js.dom.NodeList();
+		}
+		$assert(typeof context.querySelectorAll !== "undefined", "js.dom.Node#querySelectorAll", "Unsupported query selector all.");
+		try {
+			return context.querySelectorAll(selectors);
+		} catch (e) {
+			// apparently querySelectorAll throws exception only for syntax error on selectors
+			// excerpt from MDN: Throws a SYNTAX_ERR exception if the specified group of selectors is invalid.
+			$assert(false, "js.dom.Node#querySelectorAll", "bad selectors: ", selectors);
+			return new js.dom.NodeList();
+		}
+	},
+
+	_getNeighbor : function(node, nodeType, direction, predicate) {
+		if (!predicate) {
+			predicate = function() {
+				return true;
+			};
+		}
+		while (!!node) {
+			if (node.nodeType === nodeType && predicate(node)) {
+				return node;
+			}
+			node = node[direction + "Sibling"];
+		}
+		return null;
+	},
+
+	toString : function(node) {
+		if (!node) {
+			return "undefined node";
+		}
+		var s = node.nodeName.toLowerCase();
+		if (s === "input") {
+			s += ("[@type=" + node.getAttribute("type") + "]");
+		}
+		var name = node.getAttribute("name");
+		if (name) {
+			s += ("[@name=" + name + "]");
+		}
+		return s;
+	}
 };
 
-js.dom.Node.Iterator = function (node) {
-    this._child = js.dom.Node._getNeighbor(node ? node.firstChild : null, Node.ELEMENT_NODE, "next");
+js.dom.Node.Iterator = function(node) {
+	$assert(node, "js.dom.Node.Iterator#Iterator", "Node is undefined or null.");
+
+	this._child = js.dom.Node._getNeighbor(node ? node.firstChild : null, Node.ELEMENT_NODE, "next");
 };
 
 js.dom.Node.Iterator.prototype = {
-    hasNext : function () {
-        return this._child !== null;
-    },
+	hasNext : function() {
+		return this._child !== null;
+	},
 
-    next : function () {
-        if (this._child === null) {
-            return null;
-        }
-        var node = this._child;
-        this._child = js.dom.Node._getNeighbor(this._child.nextSibling, Node.ELEMENT_NODE, "next");
-        return node;
-    },
+	next : function() {
+		if (this._child === null) {
+			return null;
+		}
+		var node = this._child;
+		this._child = js.dom.Node._getNeighbor(this._child.nextSibling, Node.ELEMENT_NODE, "next");
+		return node;
+	},
 
-    toString : function () {
-        return "js.dom.Node.Iterator";
-    }
+	toString : function() {
+		return "js.dom.Node.Iterator";
+	}
 };
 $extends(js.dom.Node.Iterator, Object);
 $implements(js.dom.Node.Iterator, js.lang.Iterator);
 
-$legacy(typeof Node === "undefined", function () {
-    Node = {
-        ELEMENT_NODE : 1,
-        ATTRIBUTE_NODE : 2,
-        TEXT_NODE : 3,
-        CDATA_SECTION_NODE : 4,
-        ENTITY_REFERENCE_NODE : 5,
-        ENTITY_NODE : 6,
-        PROCESSING_INSTRUCTION_NODE : 7,
-        COMMENT_NODE : 8,
-        DOCUMENT_NODE : 9,
-        DOCUMENT_TYPE_NODE : 10,
-        DOCUMENT_FRAGMENT_NODE : 11,
-        NOTATION_NODE : 12
-    };
+$legacy(typeof Node === "undefined", function() {
+	Node = {
+		ELEMENT_NODE : 1,
+		ATTRIBUTE_NODE : 2,
+		TEXT_NODE : 3,
+		CDATA_SECTION_NODE : 4,
+		ENTITY_REFERENCE_NODE : 5,
+		ENTITY_NODE : 6,
+		PROCESSING_INSTRUCTION_NODE : 7,
+		COMMENT_NODE : 8,
+		DOCUMENT_NODE : 9,
+		DOCUMENT_TYPE_NODE : 10,
+		DOCUMENT_FRAGMENT_NODE : 11,
+		NOTATION_NODE : 12
+	};
 });
 
-$legacy(js.ua.Engine.TRIDENT, function () {
-    js.dom.Node._backRefs = {};
+$legacy(js.ua.Engine.TRIDENT, function() {
+	js.dom.Node._backRefs = {};
 
-    js.dom.Node.setElement = function (node, el) {
-        try {
-            node[js.dom.Node._BACK_REF] = el;
-        } catch (e) {
-            var backRef = node.getAttribute("data-back-ref");
-            if (!backRef) {
-                backRef = js.util.ID();
-                node.setAttribute("data-back-ref", backRef);
-            }
-            js.dom.Node._backRefs[backRef] = el;
-        }
-    };
+	js.dom.Node.setElement = function(node, el) {
+		try {
+			node[js.dom.Node._BACK_REF] = el;
+		} catch (e) {
+			var backRef = node.getAttribute("data-back-ref");
+			if (!backRef) {
+				backRef = js.util.ID();
+				node.setAttribute("data-back-ref", backRef);
+			}
+			js.dom.Node._backRefs[backRef] = el;
+		}
+	};
 
-    js.dom.Node.getElement = function (node) {
-        var el = node[js.dom.Node._BACK_REF];
-        if (typeof el !== "undefined") {
-            return el;
-        }
-        if (node.nodeType !== Node.ELEMENT_NODE) {
-            return null;
-        }
-        var backRef = node.getAttribute("data-back-ref");
-        if (!backRef) {
-            return null;
-        }
-        el = js.dom.Node._backRefs[backRef];
-        return el ? el : null;
-    };
+	js.dom.Node.getElement = function(node) {
+		var el = node[js.dom.Node._BACK_REF];
+		if (typeof el !== "undefined") {
+			return el;
+		}
+		$assert(node.nodeType === Node.ELEMENT_NODE, "js.dom.Node#getElement", "Node is not element.");
+		if (node.nodeType !== Node.ELEMENT_NODE) {
+			return null;
+		}
+		var backRef = node.getAttribute("data-back-ref");
+		if (!backRef) {
+			return null;
+		}
+		el = js.dom.Node._backRefs[backRef];
+		return el ? el : null;
+	};
 
-    js.dom.Node.removeBackRef = function (node) {
-        if (node[js.dom.Node._BACK_REF]) {
-            delete node[js.dom.Node._BACK_REF];
-            return;
-        }
-        var backRef = node.getAttribute("data-back-ref");
-        if (backRef && js.dom.Node._backRefs[backRef]) {
-            delete js.dom.Node._backRefs[backRef];
-        }
-    };
+	js.dom.Node.removeBackRef = function(node) {
+		if (node[js.dom.Node._BACK_REF]) {
+			delete node[js.dom.Node._BACK_REF];
+			return;
+		}
+		var backRef = node.getAttribute("data-back-ref");
+		if (backRef && js.dom.Node._backRefs[backRef]) {
+			delete js.dom.Node._backRefs[backRef];
+		}
+	};
 });
 
-$legacy(js.ua.Engine.TRIDENT, function () {
-    js.dom.Node.getElementsByTagName = function (node, tag) {
-        if (!node || !tag) {
-            return new js.dom.NodeList();
-        }
-        if (tag !== "*") {
-            return node.getElementsByTagName(tag);
-        }
-        // it seems IE includes comment nodes when get elements by wild card
-        var nodeList = node.getElementsByTagName("*"), result = new js.dom.NodeList();
-        for (var i = 0; i < nodeList.length; i++) {
-            node = nodeList.item(i);
-            if (node.nodeType === Node.ELEMENT_NODE) {
-                result.push(node);
-            }
-        }
-        return nodeList;
-    };
+$legacy(js.ua.Engine.TRIDENT, function() {
+	js.dom.Node.getElementsByTagName = function(node, tag) {
+		$assert(node, "js.dom.Node#getElementsByTagName", "Node is undefined or null.");
+		$assert(tag, "js.dom.Node#getElementsByTagName", "Tag is undefined, null or empty.");
+		if (!node || !tag) {
+			return new js.dom.NodeList();
+		}
+		if (tag !== "*") {
+			return node.getElementsByTagName(tag);
+		}
+		// it seems IE includes comment nodes when get elements by wild card
+		var nodeList = node.getElementsByTagName("*"), result = new js.dom.NodeList();
+		for (var i = 0; i < nodeList.length; i++) {
+			node = nodeList.item(i);
+			if (node.nodeType === Node.ELEMENT_NODE) {
+				result.push(node);
+			}
+		}
+		return nodeList;
+	};
 });
 
-$legacy(js.ua.Engine.TRIDENT, function () {
-    js.dom.Node.firstElementChild = function (node) {
-        return node ? js.dom.Node._getNeighbor(node.firstChild, Node.ELEMENT_NODE, "next") : null;
-    };
+$legacy(js.ua.Engine.TRIDENT, function() {
+	js.dom.Node.firstElementChild = function(node) {
+		$assert(node);
+		return node ? js.dom.Node._getNeighbor(node.firstChild, Node.ELEMENT_NODE, "next") : null;
+	};
 
-    js.dom.Node.lastElementChild = function (node) {
-        return node ? js.dom.Node._getNeighbor(node.lastChild, Node.ELEMENT_NODE, "previous") : null;
-    };
+	js.dom.Node.lastElementChild = function(node) {
+		$assert(node, "js.dom.Node#lastElementChild", "Node is undefined or null.");
+		return node ? js.dom.Node._getNeighbor(node.lastChild, Node.ELEMENT_NODE, "previous") : null;
+	};
 
-    js.dom.Node.nextElementSibling = function (node) {
-        return node ? js.dom.Node._getNeighbor(node.nextSibling, Node.ELEMENT_NODE, "next") : null;
-    };
+	js.dom.Node.nextElementSibling = function(node) {
+		$assert(node, "js.dom.Node#nextElementSibling", "Node is undefined or null.");
+		return node ? js.dom.Node._getNeighbor(node.nextSibling, Node.ELEMENT_NODE, "next") : null;
+	};
 
-    js.dom.Node.previousElementSibling = function (node) {
-        return node ? js.dom.Node._getNeighbor(node.previousSibling, Node.ELEMENT_NODE, "previous") : null;
-    };
+	js.dom.Node.previousElementSibling = function(node) {
+		$assert(node, "js.dom.Node#previousElementSibling", "Node is undefined or null.");
+		return node ? js.dom.Node._getNeighbor(node.previousSibling, Node.ELEMENT_NODE, "previous") : null;
+	};
 
-    js.dom.Node.childElementCount = function (node) {
-        var child = this.firstElementChild(node);
-        var count = 0;
-        while (child !== null) {
-            ++count;
-            child = this.nextElementSibling(child);
-        }
-        return count;
-    };
+	js.dom.Node.childElementCount = function(node) {
+		$assert(node, "js.dom.Node#childElementCount", "Node is undefined or null.");
+		var child = this.firstElementChild(node);
+		var count = 0;
+		while (child !== null) {
+			++count;
+			child = this.nextElementSibling(child);
+		}
+		return count;
+	};
 
-    js.dom.Node.getElementsByClassName = function (node, cssClass) {
-        return node && cssClass ? node.querySelectorAll("." + cssClass) : new js.dom.NodeList();
-    };
+	js.dom.Node.getElementsByClassName = function(node, cssClass) {
+		$assert(node, "js.dom.Node#getElementsByClassName", "Node is undefined or null.");
+		$assert(cssClass, "js.dom.Node#getElementByClassName", "CSS class is undefined, null or empty.");
+		return node && cssClass ? node.querySelectorAll("." + cssClass) : new js.dom.NodeList();
+	};
 });
 $package('js.dom');
 
@@ -4697,8 +5002,11 @@ $extends(js.dom.Phone, js.dom.Control);
 $package('js.dom');
 
 js.dom.Radio = function(ownerDoc, node) {
+	$assert(this instanceof js.dom.Radio, 'js.dom.Radio#Radio', 'Invoked as function.');
 	this.$super(ownerDoc, node);
-	};
+	$assert(node.nodeName.toLowerCase() === 'input', 'js.dom.Radio#Radio', 'Node is not an input.');
+	$assert(node.getAttribute('type') === 'radio', 'js.dom.Radio#Radio', 'Node is not a checkbox.');
+};
 
 js.dom.Radio.prototype = {
 	setValue : function(value) {
@@ -4714,7 +5022,10 @@ $extends(js.dom.Radio, js.dom.Checkbox);
 $package("js.dom");
 
 js.dom.Select = function(ownerDoc, node) {
+	$assert(this instanceof js.dom.Select, "js.dom.Select#Select", "Invoked as function.");
 	this.$super(ownerDoc, node);
+	$assert(node.nodeName.toLowerCase() === "select", "js.dom.Select#Select", "Node is not a select.");
+
 	this._dataMap = {};
 
 	this._events = this.getCustomEvents();
@@ -4750,11 +5061,13 @@ js.dom.Select.prototype = {
 				option.text = item;
 			}
 			else if (typeof item.id !== "undefined") {
+				$assert(typeof item.name !== "undefined", "js.dom.Select#_onLoad", "Item name is undefined.");
 				option.text = item.name;
 				option.value = item.id.toString();
 				this._dataMap[option.value] = item;
 			}
 			else {
+				$assert(typeof item.text !== "undefined", "js.dom.Select#_onLoad", "Item text is undefined.");
 				option.text = item.text;
 				option.value = typeof item.value !== "undefined" ? item.value : item.text;
 			}
@@ -4868,25 +5181,35 @@ $extends(js.dom.Select, js.dom.Control);
 $package("js.dom");
 
 js.dom.Style = function (el) {
+    $assert(this instanceof js.dom.Style, "js.dom.Style#Style", "Invoked as function.");
+    $assert(el, "js.dom.Style#Style", "Element is undefined or null.");
+
     this._node = el._node;
 };
 
 js.dom.Style.prototype = {
     set : function (style, value) {
+        $assert(this._node.style, "js.dom.Style#set", "Element with no styles.");
+        $assert(style, "js.dom.Style#set", "Style is undefined or null.");
+
         if (js.lang.Types.isObject(style)) {
             for ( var s in style) {
                 this.set(s, style[s]);
             }
             return this;
         }
+        $assert(js.lang.Types.isString(style), "js.dom.Style#set", "Style is undefined, null or empty.");
+        $assert(js.lang.Types.isString(value), "js.dom.Style#set", "Value is undefined, null or empty.");
         this._node.style[js.util.Strings.toScriptCase(style)] = value;
         return this;
     },
 
     get : function (style) {
+        $assert(this._node.style, "js.dom.Style#get", "Element with no styles.");
         if (!this._node.style) {
             return null;
         }
+        $assert(style, "js.dom.Style#get", "Style is undefined, null or empty.");
         if (!style) {
             return null;
         }
@@ -4907,6 +5230,7 @@ js.dom.Style.prototype = {
     },
 
     getComputedStyle : function (style) {
+        $assert(this._node.style, "js.dom.Style#getComputedStyle", "Element with no styles.");
         // n.b. computed style returns a read-only style object
         var value = window.getComputedStyle(this._node).getPropertyValue(style);
         return (typeof value === "undefined" || value.length === 0) ? null : value;
@@ -4917,6 +5241,7 @@ js.dom.Style.prototype = {
     },
 
     remove : function (style) {
+        $assert(this._node.style, "js.dom.Style#remove", "Element with no styles.");
         this._node.style[js.util.Strings.toScriptCase(style)] = "";
         return this;
     },
@@ -4959,6 +5284,7 @@ js.dom.Style.prototype = {
     },
 
     setWidth : function (width) {
+        $assert(width === "auto" || width === "inherit" || js.lang.Types.isNumber(width), "js.dom.Style#setWidth", "Width is not a valid.");
         if (js.lang.Types.isNumber(width)) {
             width = width.toString(10) + "px";
         }
@@ -4970,6 +5296,7 @@ js.dom.Style.prototype = {
     },
 
     setHeight : function (height) {
+        $assert(height === "auto" || height === "inherit" || js.lang.Types.isNumber(height), "js.dom.Style#setHeight", "Height is not valid.");
         if (js.lang.Types.isNumber(height)) {
             height = height.toString(10) + "px";
         }
@@ -5004,6 +5331,7 @@ js.dom.Style.prototype = {
     },
 
     setPosition : function (position) {
+        $assert(position, "js.dom.Style#setPosition", "Position is undefined, null or empty.");
         if (position) {
             this.set("position", position);
         }
@@ -5020,18 +5348,26 @@ js.dom.Style.prototype = {
     },
 
     setTop : function (top) {
+        $assert(this.isPositioned(), "js.dom.Style#setTop", "Trying to set position on not positioned element.");
+        $assert(js.lang.Types.isNumber(top), "js.dom.Style#setTop", "Top value is not numeric.");
         return this.set("top", Math.round(top).toString(10) + "px");
     },
 
     setRight : function (right) {
+        $assert(this.isPositioned(), "js.dom.Style#setRight", "Trying to set position on not positioned element.");
+        $assert(js.lang.Types.isNumber(right), "js.dom.Style#setRight", "Right value is not numeric.");
         return this.set("right", Math.round(right).toString(10) + "px");
     },
 
     setBottom : function (bottom) {
+        $assert(this.isPositioned(), "js.dom.Style#setBottom", "Trying to set position on not positioned element.");
+        $assert(js.lang.Types.isNumber(bottom), "js.dom.Style#setBottom", "Bottom value is not numeric.");
         return this.set("bottom", Math.round(bottom).toString(10) + "px");
     },
 
     setLeft : function (left) {
+        $assert(this.isPositioned(), "js.dom.Style#setLeft", "Trying to set position on not positioned element.");
+        $assert(js.lang.Types.isNumber(left), "js.dom.Style#setLeft", "Left value is not numeric.");
         return this.set("left", Math.round(left).toString(10) + "px");
     },
 
@@ -5052,6 +5388,7 @@ js.dom.Style.prototype = {
     },
 
     swap : function (styles, fn, scope) {
+        $assert(this._node.style, "js.dom.Style#swap", "Element with no styles.");
         var old = {};
         for ( var name in styles) {
             old[name] = this._node.style[name];
@@ -5115,6 +5452,7 @@ js.dom.template.Operator.prototype = {
 		// this logic is implemented here because can be more operators using it, e.g. data-object, data-list, etc.
 		// note that it uses private access to class construction implementation
 		if ((!!element.__ctor__ && element.__ctor__ !== js.dom.Element && element.__ctor__.prototype.hasOwnProperty(this._OBJECT_SETTER)) || (!!element.constructor && element.constructor !== js.dom.Element && element.constructor.prototype.hasOwnProperty(this._OBJECT_SETTER))) {
+			$assert(typeof this._content !== "undefined", "js.dom.template.Operator#exec", "User defined object setter for operator |%s| with no content.", this);
 			$trace("js.dom.template.Operator#exec", "User defined |%s| object setter for operator |%s|.", element, this);
 			$debug("js.dom.template.Operator#exec", "User defined object setter |%s#setObject(%s)|.", element.toString(), operand);
 			try {
@@ -5124,6 +5462,9 @@ js.dom.template.Operator.prototype = {
 			}
 			return;
 		}
+
+		$assert(element instanceof js.dom.Element, "js.dom.template.Operator#exec", "Element is undefined, null or not of proper type.");
+		$assert(js.lang.Types.isString(operand), "js.dom.template.Operator#exec", "Operand is undefined, null or not a string.");
 
 		try {
 			return this._exec(element, scope, operand);
@@ -5180,6 +5521,7 @@ js.dom.template.AttrOperator.prototype = {
 	_exec : function(element, scope, expression) {
 		js.util.Strings.parseNameValues(expression).forEach(function(pair) {
 			var propertyPath = pair.value;
+			$assert(propertyPath === "." || js.lang.Types.isObject(scope), "js.dom.template.AttrOperator#exec", "Operand is property path but scope is not an object.");
 			var attrName = pair.name;
 			var value = this._content.getValue(scope, propertyPath);
 
@@ -5191,6 +5533,7 @@ js.dom.template.AttrOperator.prototype = {
 				if (attrName === "id" && js.lang.Types.isNumber(value)) {
 					value = value.toString();
 				}
+				$assert(js.lang.Types.isString(value), "js.dom.template.AttrOperator#_exec", "Content value is not a string.");
 				$debug("js.dom.template.AttrOperator#_exec", "Set element |%s| %s attribute from property |%s|.", element, attrName, propertyPath);
 				element.setAttr(attrName, value);
 			}
@@ -5212,6 +5555,10 @@ $extends(js.dom.template.AttrOperator, js.dom.template.Operator);
 $package("js.dom.template");
 
 js.dom.template.ConditionalExpression = function (content, scope, expression) {
+    $assert(content, "js.dom.template.ConditionalExpression#ConditionalExpression", "Content argument is undefined or null.");
+    $assert(scope, "js.dom.template.ConditionalExpression#ConditionalExpression", "Scope argument is undefined or null.");
+    $assert(expression, "js.dom.template.ConditionalExpression#ConditionalExpression", "Expression argument is undefined, null or empty.");
+
     this._expression = expression;
 
     this._value = false;
@@ -5225,6 +5572,8 @@ js.dom.template.ConditionalExpression = function (content, scope, expression) {
         if (statement.opcode === js.dom.template.ConditionalExpression.Opcode.NONE) {
             continue;
         }
+        $assert(statement.propertyPath === "." || js.lang.Types.isObject(scope), "js.dom.template.ConditionalExpression#_exec", "Scope is not an object.");
+        
         // HACK: bugfix
         // content.getValue() return null if object property is null but throws exception if object property is undefined
         // this logic need to handle both null and undefined conditions the same way 
@@ -5302,7 +5651,8 @@ js.dom.template.ConditionalExpression.prototype = {
                     break;
 
                 default:
-                    }
+                    $assert(false, "js.dom.template.ConditionalExpression#parse", "Illegal state.");
+            }
         }
 
         // completes current statement properties when all characters from expression was read
@@ -5325,6 +5675,8 @@ js.dom.template.ConditionalExpression.prototype = {
     },
 
     _evaluate: function (statement, object) {
+        $assert(typeof object !== "undefined", "js.dom.template.ConditionalExpression#evaluate", "Object argument is undefined or null.");
+
         if (statement.opcode === js.dom.template.ConditionalExpression.Opcode.INVALID) {
             $warn("js.dom.template.ConditionalExpression#evaluate", "Invalid conditional expression |%s|. Not supported opcode.", this._expression);
             return false;
@@ -5345,6 +5697,7 @@ js.dom.template.ConditionalExpression.prototype = {
         }
 
         var value = processor.evaluate(object, statement.operand);
+        $assert(js.lang.Types.isBoolean(value), "js.dom.template.ConditionalExpression#evaluate", "Operator processor returned value is not boolean.");
         return statement.not ? !value : value;
     },
 
@@ -5373,7 +5726,8 @@ js.dom.template.ConditionalExpression.prototype = {
                     break;
 
                 default:
-                    }
+                    $assert(false, "js.dom.template.ConditionalExpression#_getProcessor", "Illegal state.");
+            }
             this._processors[opcode] = processor;
         }
 
@@ -5600,6 +5954,7 @@ js.dom.template.ConditionalExpression.Dates = {
     dateMatcher: function (dateFormat) {
         // at this point date format is already validated and is safe to ignore null matcher
         var matcher = this.DATE_PATTERN.exec(dateFormat);
+        $assert(matcher, "js.dom.template.ConditionalExpression.Dates#dateMatcher", "Unexpectable null matcher.");
         return matcher;
     },
 
@@ -5651,6 +6006,7 @@ js.dom.template.ConditionalExpression.Dates = {
 $package("js.dom.template");
 
 js.dom.template.Content = function(model) {
+	$assert(model, "js.dom.template.Content#Content", "Model is undefined or null.");
 	this._model = model ? model : {};
 };
 
@@ -5707,6 +6063,8 @@ js.dom.template.Content.prototype = {
 	},
 
 	getValue : function(context, propertyPath) {
+		$assert(arguments.length === 1 || arguments.length === 2, "js.dom.template.Content#getValue", "Invalid arguments count.");
+
 		if (propertyPath === ".") {
 			return context;
 		}
@@ -5717,10 +6075,15 @@ js.dom.template.Content.prototype = {
 	},
 
 	_getAbsoluteValue : function(propertyPath) {
+		$assert(propertyPath && js.lang.Types.isString(propertyPath), "js.dom.template.Content#_getAbsoluteValue", "Property path is undefined, null, empty or not string.");
+		$assert(propertyPath.charAt(0) === ".", "js.dom.template.Content#_getAbsoluteValue", "Property path is not absolute.");
 		return this._getRelativeValue(this._model, propertyPath.substr(1));
 	},
 
 	_getRelativeValue : function(context, propertyPath) {
+		$assert(context && js.lang.Types.isObject(context), "js.dom.template.Content#_getRelativeValue", "Context is undefined, null or not object.");
+		$assert(propertyPath && js.lang.Types.isString(propertyPath), "js.dom.template.Content#_getRelativeValue", "Property path is undefined, null, empty or not string.");
+
 		var o = context;
 		var pathElements = propertyPath.split(".");
 		for ( var i = 0;;) {
@@ -5739,6 +6102,9 @@ js.dom.template.Content.prototype = {
 	},
 
 	_getObjectProperty : function(object, property) {
+		$assert(js.lang.Types.isObject(object), "js.dom.template.Content#_getObjectProperty", "Object is not of proper type.");
+		$assert(js.lang.Types.isString(property), "js.dom.template.Content#_getObjectProperty", "Property name is not a string.");
+		
 		// takes care to normalize property name since it can be CSS like hyphen case
 		property = js.util.Strings.toScriptCase(property);
 		var value = object[property];
@@ -5761,6 +6127,7 @@ $extends(js.dom.template.Content, Object);
 $package('js.dom.template');
 
 js.dom.template.ContentException = function(propertyPath, message) {
+	$assert(this instanceof js.dom.template.ContentException, 'js.dom.template.ContentException#ContentException', 'Invoked as function.');
 	this.$super($format(arguments, 1));
 
 	this.name = 'Undefined property exception';
@@ -5888,12 +6255,15 @@ js.dom.template.HrefOperator = function(content) {
 
 js.dom.template.HrefOperator.prototype = {
 	_exec : function(element, scope, propertyPath) {
+		$assert(propertyPath === "." || js.lang.Types.isObject(scope), "js.dom.template.HrefOperator#exec", "Operand is property path but scope is not an object.");
+
 		var href = this._content.getValue(scope, propertyPath);
 		if (href === null) {
 			$warn("js.dom.template.HrefOperator#_exec", "Null property |%s|. Remove href attribute from element |%s|.", propertyPath, element);
 			element.removeAttr("href");
 		}
 		else {
+			$assert(js.lang.Types.isString(href), "js.dom.template.HrefOperator#_exec", "Content value is not a string.");
 			$debug("js.dom.template.HrefOperator#_exec", "Set element |%s| href attribute from property |%s|.", element, propertyPath);
 			element.setAttr("href", href);
 		}
@@ -5922,6 +6292,8 @@ js.dom.template.HtmlOperator.prototype = {
 			return null;
 		}
 
+		$assert(propertyPath === "." || js.lang.Types.isObject(scope), "js.dom.template.HtmlOperator#_exec", "Operand is property path but scope is not an object.");
+		$assert(!element.hasChildren(), "js.dom.template.HtmlOperator#_exec", "Element |%s| has children. Cannot set inner HTML.", element);
 		var html = this._content.getValue(scope, propertyPath);
 
 		if (html === null) {
@@ -5929,6 +6301,7 @@ js.dom.template.HtmlOperator.prototype = {
 			element.removeChildren();
 		}
 		else {
+			$assert(js.lang.Types.isString(html), "js.dom.template.HtmlOperator#_exec", "Content value is not a string.");
 			$debug("js.dom.template.HtmlOperator#_exec", "Set element |%s| inner HTML from property |%s|.", element, propertyPath);
 			element.setHTML(html);
 		}
@@ -5952,6 +6325,8 @@ js.dom.template.IdOperator = function(content) {
 
 js.dom.template.IdOperator.prototype = {
 	_exec : function(element, scope, propertyPath) {
+		$assert(propertyPath === "." || js.lang.Types.isObject(scope), "js.dom.template.IdOperator#exec", "Operand is property path but scope is not an object.");
+
 		var id = this._content.getValue(scope, propertyPath);
 		if (id === null) {
 			$warn("js.dom.template.IdOperator#_exec", "Null property |%s|. Remove id attribute from element |%s|.", propertyPath, element);
@@ -5961,6 +6336,7 @@ js.dom.template.IdOperator.prototype = {
 			if (js.lang.Types.isNumber(id)) {
 				id = id.toString();
 			}
+			$assert(js.lang.Types.isString(id), "js.dom.template.IdOperator#_exec", "ID operand should be string or numeric.");
 			$debug("js.dom.template.IdOperator#_exec", "Set element |%s| id attribute from property |%s|.", element, propertyPath);
 			element.setAttr("id", id);
 		}
@@ -6029,6 +6405,7 @@ js.dom.template.ListOperator.prototype = {
 			return null;
 		}
 
+		$assert(propertyPath === "." || js.lang.Types.isObject(scope), "js.dom.template.ListOperator#exec", "Operand is property path but scope is not an object.");
 		$debug("js.dom.template.ListOperator#_exec", "Process element |%s| for property |%s|.", element, propertyPath);
 
 		var it = this._content.getIterable(scope, propertyPath), itemElement, value;
@@ -6053,6 +6430,7 @@ js.dom.template.ListOperator.prototype = {
 		var itemTemplate = element.getUserData(this._ITEM_TEMPLATE);
 		if (itemTemplate === null) {
 			itemTemplate = element.getFirstChild();
+			$assert(itemTemplate !== null, "js.dom.template.ListOperator#exec", "Invalid list element |%s|. Missing item template.", element);
 			itemTemplate.remove(false);
 			element.setUserData(this._ITEM_TEMPLATE, itemTemplate);
 		}
@@ -6204,6 +6582,7 @@ js.dom.template.MapOperator.prototype = {
 			return null;
 		}
 
+		$assert(propertyPath === "." || js.lang.Types.isObject(scope), "js.dom.template.MapOperator#exec", "Operand is property path but scope is not an object.");
 		$debug("js.dom.template.MapOperator#_exec", "Process element |%s| for property |%s|.", element, propertyPath);
 
 		var map = this._content.getMap(scope, propertyPath), keyElement, valueElement;
@@ -6227,10 +6606,12 @@ js.dom.template.MapOperator.prototype = {
 		var keyTemplate = element.getUserData(this._KEY_TEMPLATE);
 		if (keyTemplate === null) {
 			keyTemplate = element.getFirstChild();
+			$assert(keyTemplate !== null, "js.dom.template.MapOperator#_exec", "Invalid map element |%s|. Missing key template.", element);
 			keyTemplate.remove(false);
 			element.setUserData(this._KEY_TEMPLATE, keyTemplate);
 
 			var valueTemplate = element.getFirstChild();
+			$assert(valueTemplate !== null, "js.dom.template.MapOperator#_exec", "Invalid MAP element |%s|. Missing value template.", element);
 			valueTemplate.remove(false);
 			element.setUserData(this._VALUE_TEMPLATE, valueTemplate);
 		}
@@ -6255,6 +6636,7 @@ js.dom.template.NumberingOperator.prototype = {
         // scope can be null but this operator doesnot use it
 
         var indexes = this._template._indexes;
+        $assert(indexes.length > 0, "js.dom.template.NumberingOperator#_exec", "Required ordered collection index is missing. Numbering operator cancel execution.");
         element.setText(this._getNumbering(indexes, format));
         return undefined;
     },
@@ -6305,7 +6687,8 @@ js.dom.template.NumberingOperator.prototype = {
         case 'I':
             return new js.dom.template.UpperCaseRomanNumbering();
         }
-        },
+        $assert(false, "js.dom.template.NumberingOperator#_getNumberingFormat", "Invalid numbering format code |%s|.", formatCode);
+    },
 
     toString : function () {
         return "js.dom.template.NumberingOperator";
@@ -6323,6 +6706,7 @@ js.dom.template.ObjectOperator.prototype = {
 		if (scope === null) {
 			return null;
 		}
+		$assert(propertyPath === "." || js.lang.Types.isStrictObject(scope), "js.dom.template.ObjectOperator#exec", "Operand is property path but scope is not an object.");
 		var value = this._content.getValue(scope, propertyPath);
 		if (value === null) {
 			$warn("js.dom.template.ObjectOperator#_exec", "Null scope for property |%s| on element |%s|.", propertyPath, element);
@@ -6362,6 +6746,7 @@ js.dom.template.OListOperator.prototype = {
 		var index = new js.dom.template.Index();
 		indexes.push(index);
 
+		$assert(propertyPath === "." || js.lang.Types.isObject(scope), "js.dom.template.OListOperator#exec", "Operand is property path but scope is not an object.");
 		$debug("js.dom.template.OListOperator#_exec", "Process element |%s| with property |%s|.", element, propertyPath);
 
 		var it = this._content.getIterable(scope, propertyPath), itemElement;
@@ -6384,6 +6769,7 @@ js.dom.template.OListOperator.prototype = {
 		var itemTemplate = element.getUserData(this._ITEM_TEMPLATE);
 		if (itemTemplate === null) {
 			itemTemplate = element.getFirstChild();
+			$assert(itemTemplate !== null, "js.dom.template.OListOperator#exec", "Invalid list element |%s|. Missing item template.", element);
 			itemTemplate.remove(false);
 			element.setUserData(this._ITEM_TEMPLATE, itemTemplate);
 		}
@@ -6421,6 +6807,7 @@ js.dom.template.OMapOperator.prototype = {
 		var index = new js.dom.template.Index();
 		indexes.push(index);
 
+		$assert(propertyPath === "." || js.lang.Types.isObject(scope), "js.dom.template.OMapOperator#exec", "Operand is property path but scope is not an object.");
 		$debug("js.dom.template.OMapOperator#_exec", "Process element |%s| for property |%s|.", element, propertyPath);
 
 		var map = this._content.getMap(scope, propertyPath), keyElement, valueElement;
@@ -6445,10 +6832,12 @@ js.dom.template.OMapOperator.prototype = {
 		var keyTemplate = element.getUserData(this._KEY_TEMPLATE), valueTemplate;
 		if (keyTemplate === null) {
 			keyTemplate = element.getFirstChild();
+			$assert(keyTemplate !== null, "js.dom.template.OMapOperator#_exec", "Invalid map element |%s|. Missing key template.", element);
 			keyTemplate.remove(false);
 			element.setUserData(this._KEY_TEMPLATE, keyTemplate);
 
 			valueTemplate = element.getFirstChild();
+			$assert(valueTemplate !== null, "js.dom.template.OMapOperator#_exec", "Invalid MAP element |%s|. Missing value template.", element);
 			valueTemplate.remove(false);
 			element.setUserData(this._VALUE_TEMPLATE, valueTemplate);
 		}
@@ -6574,11 +6963,15 @@ $static(function() {
 $package('js.dom.template');
 
 js.dom.template.OperatorFactory = function (template) {
+    $assert(template instanceof js.dom.template.Template, "js.dom.template.OperatorFactory#OperatorFactory", "Content is undefined, null or not of proper type.");
+
     this._template = template;
 };
 
 js.dom.template.OperatorFactory.prototype = {
     init : function (content) {
+        $assert(content instanceof js.dom.template.Content, "js.dom.template.OperatorFactory#init", "Content is undefined, null or not of proepr type.");
+
         var Opcode = js.dom.template.Opcode;
         this[Opcode.GOTO] = new js.dom.template.GotoOperator(content);
         this[Opcode.EXCLUDE] = new js.dom.template.ExcludeOperator(content);
@@ -6603,6 +6996,7 @@ js.dom.template.OperatorFactory.prototype = {
 
     getInstance : function (opcode) {
         var operator = this[opcode];
+        $assert(typeof operator !== "undefined", "js.dom.template.OperatorFactory#getInstance", "Operator |%s| is not implemented.", opcode);
         return operator;
     },
 
@@ -6645,6 +7039,8 @@ js.dom.template.OperatorsList.prototype = {
             if (opcode === Opcode.NONE) {
                 continue;
             }
+            $assert(attr.value.length !== 0, "js.dom.template.OperatorsList#initElement", "Empty operand on element |%s| for opcode |%s|.", element, opcode);
+
             meta = {
                 opcode : opcode,
                 operand : attr.value
@@ -6677,7 +7073,8 @@ js.dom.template.OperatorsList.prototype = {
                 break;
 
             default:
-                }
+                $assert(false, "js.dom.template.OperatorsList#initElement", "Invalid operators list on element |%s|. Unknown opcode type |%s|.", element, Opcode.Type.name(type));
+            }
         }
     },
 
@@ -6705,6 +7102,9 @@ js.dom.template.OperatorsList.prototype = {
 
         // TODO because of above hack this condition is always true 
         if (this._contentOperator !== null) {
+            $assert(this._contentOperator.opcode !== js.dom.template.Opcode.TEXT, "js.dom.template.OperatorsList#initSubtree", "Subtree initializer forbids TEXT operator.");
+            $assert(this._contentOperator.opcode !== js.dom.template.Opcode.HTML, "js.dom.template.OperatorsList#initSubtree", "Subtree initializer forbids HTML operator.");
+            $assert(this._contentOperator.opcode !== js.dom.template.Opcode.NUMBERING, "js.dom.template.OperatorsList#initSubtree", "Subtree initializer forbids NUMBERING operator.");
             this._contentOperator.operand = ".";
             return;
         }
@@ -6717,7 +7117,8 @@ js.dom.template.OperatorsList.prototype = {
         "See js.dom.template.Opcode.Type#CONTENT for a list of content operators.", element.trace(), element.dump());
         $error("js.dom.template.OperatorsList#initSubtree", message);
 
-        },
+        $assert(false, "js.dom.template.OperatorsList#initSubtree", "Missing content operator. Element not usable for template injection. See error log.");
+    },
 
     hasJumpOperator : function () {
         return this._jumpOperator !== null;
@@ -6732,14 +7133,17 @@ js.dom.template.OperatorsList.prototype = {
     },
 
     getJumpOperatorMeta : function () {
+        $assert(this._jumpOperator !== null, "js.dom.template.OperatorsList#getJumpOperatorMeta", "Jump operator is null.");
         return this._jumpOperator;
     },
 
     getConditionalOperatorMeta : function () {
+        $assert(this._conditionalOperator !== null, "js.dom.template.OperatorsList#getConditionalOperatorMeta", "Conditional operator is null.");
         return this._conditionalOperator;
     },
 
     getContentOperatorMeta : function () {
+        $assert(this._contentOperator !== null, "js.dom.template.OperatorsList#getContentOperatorMeta", "Content operator is null.");
         return this._contentOperator;
     },
 
@@ -6748,7 +7152,8 @@ js.dom.template.OperatorsList.prototype = {
     },
 
     _insanityCheck : function (element, meta, type) {
-        },
+        $assert(meta === null, "js.dom.template.OperatorsList#_insanityCheck", "Invalid operators list on element |%s|. Only one %s operator is allowed.", element, js.dom.template.Opcode.Type.name(type));
+    },
 
     toString : function () {
         return "js.dom.template.OperatorsList";
@@ -6770,12 +7175,14 @@ js.dom.template.OptionsOperator = function(content) {
 
 js.dom.template.OptionsOperator.prototype = {
 	_exec : function(element, scope, propertyPath) {
+		$assert(element.getTag() === "select", "js.dom.template.OptionsOperator#_exec", "Options operator is useable only on select element.");
 		if (scope === null) {
 			$warn("js.dom.template.OptionsOperator#_exec", "Null scope for property |%s|. Remove options from select element |%s|.", propertyPath, element);
 			element.removeChildren();
 			return null;
 		}
 
+		$assert(js.lang.Types.isObject(scope), "js.dom.template.OptionsOperator#_exec", "Operand is property path but scope is not an object.");
 		var options = this._content.getValue(scope, propertyPath);
 
 		if (options === null) {
@@ -6783,6 +7190,7 @@ js.dom.template.OptionsOperator.prototype = {
 			element.removeChildren();
 		}
 		else {
+			$assert(js.lang.Types.isArray(options), "js.dom.template.OptionsOperator#_exec", "Content value is not an array of strings.");
 			$debug("js.dom.template.OptionsOperator#_exec", "Load select element |%s| options from property |%s|.", element, propertyPath);
 			element.setOptions(options);
 		}
@@ -6806,6 +7214,12 @@ js.dom.template.SrcOperator = function(content) {
 
 js.dom.template.SrcOperator.prototype = {
 	_exec : function(element, scope, propertyPath) {
+		$assert((function() {
+			var elementsWithSrc = [ "iframe", "script", "img", "input", "textarea", "video", "audio" ];
+			return elementsWithSrc.indexOf(element.getTag()) !== -1;
+		})(), "js.dom.template.SrcOperator#exec", "SRC operator is not supported on element |%s|.", element);
+		$assert(propertyPath === "." || js.lang.Types.isObject(scope), "js.dom.template.SrcOperator#exec", "Operand is property path but scope is not an object.");
+
 		var value = this._content.getValue(scope, propertyPath);
 		if (value === null) {
 			if (typeof element.hasDefault === "function") {
@@ -6817,6 +7231,7 @@ js.dom.template.SrcOperator.prototype = {
 			}
 		}
 		else {
+			$assert(js.lang.Types.isString(value), "js.dom.template.SrcOperator#_exec", "Content value is not a string.");
 			$debug("js.dom.template.SrcOperator#_exec", "Set element |%s| src attribute from property |%s|.", element, propertyPath);
 			if (Boolean(element.getAttr("data-reload"))) {
 				element.reload(value);
@@ -6842,6 +7257,9 @@ $extends(js.dom.template.SrcOperator, js.dom.template.Operator);
 $package('js.dom.template');
 
 js.dom.template.Template = function(doc) {
+	$assert(doc, "js.dom.template.Template#Template", "Document is undefined or null.");
+	$assert(doc instanceof js.dom.Document, "js.dom.template.Template#Template", "Document is not of proper type.");
+
 	this._doc = doc;
 
 	this._operatorFactory = new js.dom.template.OperatorFactory(this);
@@ -6857,11 +7275,15 @@ js.dom.template.Template.getInstance = function(doc) {
 
 js.dom.template.Template.prototype = {
 	inject : function(value) {
+		$assert(value, "js.dom.template.Template#inject", "Value is undefined or null.");
 		var content = this._init(value);
 		this._injectElement(this._doc.getRoot(), content.getModel());
 	},
 
 	injectElement : function(element, value) {
+		$assert(element, "js.dom.template.Template#injectElement", "Element is undefined or null.");
+		$assert(js.lang.Types.isElement(element), "js.dom.template.Template#injectElement", "Element is not of proper type.");
+		$assert(value, "js.dom.template.Template#injectElement", "Value is undefined or null.");
 		var content = this._init(value);
 		this._operators.initSubtree(element);
 		this._inject(element, content.getModel());
@@ -6873,6 +7295,8 @@ js.dom.template.Template.prototype = {
 	},
 
 	reset : function(element) {
+		$assert(element, "js.dom.template.Template#reset", "Element is undefined or null.");
+		$assert(js.lang.Types.isElement(element), "js.dom.template.Template#reset", "Element is not of proper type.");
 		this._operators.initElement(element);
 
 		if (this._operators.hasJumpOperator()) {
@@ -6911,6 +7335,9 @@ js.dom.template.Template.prototype = {
 	},
 
 	_inject : function(element, scope) {
+		$assert(element, "js.dom.template.Template#_inject", "Element is undefined or null.");
+		$assert(js.lang.Types.isElement(element), "js.dom.template.Template#_inject", "Element is not of proper type.");
+
 		if (this._operators.hasJumpOperator()) {
 			var id = this._execOperator(element, scope, this._operators.getJumpOperatorMeta());
 			// replace current element and its operators list with goto target element
@@ -6984,6 +7411,9 @@ js.dom.template.TextOperator.prototype = {
 			return null;
 		}
 
+		$assert(propertyPath === "." || js.lang.Types.isObject(scope), "js.dom.template.TextOperator#exec", "Operand is property path but scope is not an object.");
+		$assert(!element.hasChildren(), "js.dom.template.TextOperator#_exec", "Element |%s| has children.", element);
+
 		var value = this._content.getValue(scope, propertyPath);
 		if (value === null || value === '') {
 			$warn("js.dom.template.TextOperator#_exec", "Null or empty property |%s|. Remove element |%s| text content.", propertyPath, element);
@@ -7015,12 +7445,15 @@ js.dom.template.TitleOperator = function(content) {
 
 js.dom.template.TitleOperator.prototype = {
 	_exec : function(element, scope, propertyPath) {
+		$assert(propertyPath === "." || js.lang.Types.isObject(scope), "js.dom.template.TitleOperator#exec", "Operand is property path but scope is not an object.");
+
 		var value = this._content.getValue(scope, propertyPath);
 		if (value === null) {
 			$warn("js.dom.template.TitleOperator#_exec", "Null property |%s|. Remove title attribute from element |%s|.", propertyPath, element);
 			element.removeAttr("title");
 		}
 		else {
+			$assert(js.lang.Types.isString(value), "js.dom.template.TitleOperator#_exec", "Content value is not a string.");
 			$debug("js.dom.template.TitleOperator#_exec", "Set element |%s| title attribute from property |%s|.", element, propertyPath);
 			element.setAttr("title", value);
 		}
@@ -7045,19 +7478,24 @@ js.dom.template.ValueOperator.prototype = {
 	GENERIC_ELEMENTS : [ "div" ],
 
 	_exec : function(element, scope, propertyPath) {
+		$assert(propertyPath === "." || js.lang.Types.isObject(scope), "js.dom.template.ValueOperator#_exec", "Operand is property path but scope is not an object.");
+
 		var value = this._content.getValue(scope, propertyPath);
 
 		// if context element is a generic element just pass value to its value setter
 		if (this.GENERIC_ELEMENTS.indexOf(element.getTag()) !== -1) {
+			$assert(js.lang.Types.isFunction(element.setValue), "js.dom.template.ValueOperator#_exec", "Invalid generic element: missing value setter.");
 			element.setValue(value);
 			return;
 		}
 
+		$assert(element instanceof js.dom.Control, "js.dom.template.ValueOperator#_exec", "Element |%s| is not a control.", element);
 		if (value === null) {
 			$warn("js.dom.template.ValueOperator#_exec", "Null property |%s|. Reset value for element |%s|.", propertyPath, element);
 			element.reset();
 		}
 		else {
+			$assert(element._format !== null || js.lang.Types.isPrimitive(value), "js.dom.template.ValueOperator#_exec", "Formatter is null and content value is not a primitive.");
 			$debug("js.dom.template.ValueOperator#_exec", "Set element |%s| value from property |%s|.", element, propertyPath);
 			element.setValue(value);
 		}
@@ -7075,6 +7513,9 @@ $extends(js.dom.template.ValueOperator, js.dom.template.Operator);
 $package("js.event");
 
 js.event.DomEvents = function (targetNode) {
+    $assert(targetNode, "js.event.DomEvents#DomEvents", "Target node is undefined or null.");
+    $assert(targetNode instanceof js.dom.Element || targetNode instanceof js.dom.Document, "js.event.DomEvents#DomEvents", "Given argument is not of proper type.");
+
     this._targetNode = new js.event.TargetNode(targetNode);
 
     this._handlers = [];
@@ -7082,6 +7523,7 @@ js.event.DomEvents = function (targetNode) {
 
 js.event.DomEvents.prototype = {
     hasType : function (type) {
+        $assert(type, "js.event.DomEvents#hasType", "Event type is undefined, null or empty.");
         return type in js.event.Types;
     },
 
@@ -7090,6 +7532,10 @@ js.event.DomEvents.prototype = {
     },
 
     addListener : function (type, listener, scope, capture) {
+        $assert(type in js.event.Types, "js.event.DomEvents#addListener", "Unrecognized event type #%s.", type);
+        $assert(js.lang.Types.isFunction(listener), "js.event.DomEvents#addListener", "Event listener is not a function.");
+        $assert(js.lang.Types.isObject(scope), "js.event.DomEvents#addListener", "Scope is not an object.");
+        $assert(js.lang.Types.isBoolean(capture), "js.event.DomEvents#addListener", "Capture flag is not a boolean value.");
         if (!(type in js.event.Types)) {
             return;
         }
@@ -7097,6 +7543,7 @@ js.event.DomEvents.prototype = {
         var handler = new js.event.Handler(this._targetNode, type, listener, scope, capture);
         // standard browsers silently discard multiple registration for listeners with the same parameters but IE allows
         if (this._handlers.indexOf(handler) !== -1) {
+            $assert("js.event.DomEvents#addListener", "Event |%s:%s| already registered.", type, capture ? "capture" : "bubbling");
             return;
         }
         this._addListener(handler);
@@ -7104,6 +7551,9 @@ js.event.DomEvents.prototype = {
     },
 
     removeListener : function (type, listener, capture) {
+        $assert(type in js.event.Types, "js.event.DomEvents#removeListener", "Unrecognized event type #%s.", type);
+        $assert(js.lang.Types.isFunction(listener), "js.event.DomEvents#removeListener", "Event listener is not a function.");
+        $assert(js.lang.Types.isBoolean(capture), "js.event.DomEvents#removeListener", "Capture flag is not a boolean value.");
         if (!(type in js.event.Types)) {
             return;
         }
@@ -7156,6 +7606,10 @@ $legacy(js.ua.Engine.GECKO, function () {
 $package('js.event');
 
 js.event.Event = function(doc, type) {
+	$assert(doc, 'js.dom.Event#Event', 'Document is undefined or null.');
+	$assert(doc instanceof js.dom.Document, 'js.dom.Event#Event', 'Document is not an instance of js.dom.Document');
+	$assert(js.lang.Types.isString(type), 'js.dom.Event#Event', 'Invalid event type.');
+
 	this._doc = doc;
 
 	this.type = type;
@@ -7193,6 +7647,8 @@ js.event.Event.prototype = {
 	},
 
 	_init : function(domEvent) {
+		$assert(typeof domEvent.srcElement !== "undefined" || typeof domEvent.originalTarget !== "undefined", "js.event.Event#_init", "Missing support for event original target.");
+
 		this._domEvent = domEvent;
 
 		this.target = domEvent.target.nodeType === Node.ELEMENT_NODE ? this._doc.getElement(domEvent.target) : null;
@@ -7314,6 +7770,8 @@ js.event.EventsMap = {
             }
 
             eventListener = eventsMap[eventSelector];
+            $assert(js.lang.Types.isFunction(eventListener), "js.event.EventsMap#handle", "Event listener for |%s| is not a function.", eventSelector);
+
             context.findByCss(selector).on(eventType, eventListener, listenersScope);
         }
 
@@ -7323,7 +7781,11 @@ js.event.EventsMap = {
 $package("js.event");
 
 js.event.Handler = function (targetNode, type, listener, scope, capture) {
-	this.node = targetNode.node;
+	$assert(targetNode, "js.event.Handler#Handler", "Undefined or null target node.");
+	$assert(type, "js.event.Handler#Handler", "Undefined or null event type.");
+	$assert(listener, "js.event.Handler#Handler", "Undefined or null listener.");
+	
+    this.node = targetNode.node;
 
     this.type = type;
 
@@ -7386,6 +7848,7 @@ js.event.Handler.prototype = {
     },
 
     equals : function (handler) {
+        $assert(handler instanceof js.event.Handler, "js.dom.Handler#equals", "Handler to compare is undefined or null.");
         return handler.node === this.node && handler.type === this.type && handler.listener === this.listener;
     },
     
@@ -7671,6 +8134,8 @@ js.format.Format = {
 $package("js.format");
 
 js.format.AbstractDateTime = function (dateFormat) {
+    $assert(dateFormat instanceof js.format.DateFormat, "js.format.AbstractDateTime#AbstractDateTime", "Argument is not a date format utility.");
+
     this._dateFormat = dateFormat;
 };
 
@@ -7682,6 +8147,7 @@ js.format.AbstractDateTime.prototype = {
         if(js.lang.Types.isNumber(date)) {
         	date = new Date(date);
         }
+        $assert(js.lang.Types.isDate(date), "js.format.AbstractDateTime#format", "Argument is not a date.");
         if (!js.lang.Types.isDate(date)) {
             return "";
         }
@@ -7692,6 +8158,7 @@ js.format.AbstractDateTime.prototype = {
         if (!source) {
             return null;
         }
+        $assert(js.lang.Types.isString(source), "js.format.AbstractDateTime#parse", "Source is not a string.");
         if (!js.lang.Types.isString(source)) {
             return null;
         }
@@ -7739,6 +8206,8 @@ js.format.BitRate.prototype = {
     }(),
 
     format : function (bitRate) {
+        $assert(js.lang.Types.isNumber(bitRate), "js.format.BitRate#format", "Bit rate is not a number.");
+        $assert(bitRate >= 0, "js.format.BitRate#format", "Bit rate is not positive or zero.");
         if (!bitRate) {
             return this._format(0, "1");
         }
@@ -7780,6 +8249,8 @@ js.format.BitRate.prototype = {
     parse : function (string) {
         this._VALID_INPUT.lastIndex = 0;
         var m = this._VALID_INPUT.exec(string);
+        $assert(m !== null && m.length === 3, "js.format.BitRate#parse", "Invalid bit rate format.");
+
         var value = this._numberFormat.parse(m[1]);
         var unit = m[2].toLowerCase();
         if (unit.length > 3) {
@@ -7815,6 +8286,7 @@ js.format.Currency = function () {
 
 js.format.Currency.prototype = {
     format : function (currency) {
+        $assert(js.lang.Types.isNumber(currency), "js.format.Currency#format", "Currency is not a number.");
         return this._numberFormat.format(currency);
     },
 
@@ -7835,6 +8307,8 @@ $implements(js.format.Currency, js.format.Format);
 $package("js.format");
 
 js.format.DateFormat = function(pattern) {
+	$assert(js.lang.Types.isString(pattern), "js.format.DateFormat#DateFormat", "Pattern is not a string.");
+
 	this._pattern = pattern;
 
 	this._symbols = new js.format.DateFormatSymbols();
@@ -8036,6 +8510,7 @@ js.format.DateFormat.PatternFormatters = {
 
 	truncateYear : function(fullYear) {
 		var currentYear = new Date().getFullYear();
+		$assert(currentYear - 80 < fullYear && fullYear <= currentYear + 20, "js.format.DateFormat#format", "Year is not in proper range.");
 		return fullYear.toString().substr(2);
 	},
 
@@ -8066,6 +8541,7 @@ js.format.DateFormat.prototype = {
 	_PATTERN_CHARS : "yMdEhHmsSazZ",
 
 	format : function(date) {
+		$assert(js.lang.Types.isDate(date), "js.format.DateFormat#format", "Date argument is not a valid Date instance.");
 		var formatters = js.format.DateFormat.PatternFormatters;
 		formatters.symbols = this._symbols;
 		formatters.date = date;
@@ -8077,6 +8553,7 @@ js.format.DateFormat.prototype = {
 	},
 
 	parse : function(source) {
+		$assert(js.lang.Types.isString(source), "js.format.DateFormat#parse", "Source is not a string.");
 		var sourceIndex = 0;
 
 		var pattern = this._pattern;
@@ -8104,6 +8581,7 @@ js.format.DateFormat.prototype = {
 				return year;
 			}
 
+			$assert(year < 100, "js.format.DateFormat#parse", "Year is greater than 99.");
 			var nowFullYear = new Date().getFullYear();
 			var nowYear = nowFullYear % 100;
 			var century = Math.floor(nowFullYear / 100);
@@ -8131,6 +8609,7 @@ js.format.DateFormat.prototype = {
 			if (i === -1) {
 				i = index(symbols.shortMonths, rex);
 			}
+			$assert(i !== -1, "js.format.DateFormat#parse", "Invalid month name.");
 			return i;
 		}
 		function weekDay() {
@@ -8140,7 +8619,8 @@ js.format.DateFormat.prototype = {
 			if (i === -1) {
 				i = index(symbols.shortWeekDays, rex);
 			}
-			}
+			$assert(i !== -1, "js.format.DateFormat#parse", "Invalid week day.");
+		}
 		function ampmMarker() {
 			++patternIndex;
 			var ampm = source.substr(sourceIndex, 2).toLowerCase();
@@ -8228,6 +8708,7 @@ js.format.DateFormat.prototype = {
 				text();
 				break;
 			default:
+				$assert(source.charAt(sourceIndex) === pattern.charAt(patternIndex), "js.format.DateFormat#parse", "Source and pattern does not match.");
 				++patternIndex;
 				++sourceIndex;
 			}
@@ -8262,14 +8743,17 @@ js.format.DateFormat.prototype = {
 
 		function year() {
 			match.length = skipSubPattern();
+			$assert(match.length <= 4, "js.format.DateFormat#_compile", "Invalid year.");
 			match.pattern = match.length > 2 ? "\\d{1,4}" : "\\d{2}";
 		}
 		function month() {
 			match.length = skipSubPattern();
+			$assert(match.length <= 4, "js.format.DateFormat#_compile", "Invalid month.");
 			match.pattern = match.length <= 2 ? "\\d{1,2}" : match.length === 3 ? "\\w{3}" : "\\w{3,}";
 		}
 		function weekDay() {
 			match.length = skipSubPattern();
+			$assert(match.length <= 4, "js.format.DateFormat#_compile", "Invalid week day.");
 			match.pattern = match.length === 3 ? "\\w{3}" : "\\w{3,}";
 		}
 		function number(maxDigitsCount) {
@@ -8277,18 +8761,22 @@ js.format.DateFormat.prototype = {
 			if (typeof maxDigitsCount === "undefined") {
 				maxDigitsCount = 2;
 			}
+			$assert(match.length <= maxDigitsCount, "js.format.DateFormat#_compile", "Invalid number format.");
 			match.pattern = "\\d{1," + maxDigitsCount + "}";
 		}
 		function ampmMarker() {
 			match.length = skipSubPattern();
+			$assert(match.length === 1, "js.format.DateFormat#_compile", "Invalid AM/PM marker.");
 			match.pattern = "am|pm";
 		}
 		function generalTZ() {
 			match.length = skipSubPattern();
+			$assert(match.length <= 4, "js.format.DateFormat#_compile", "Invalid time zone.");
 			match.pattern = "[+-]?\\d{4}";
 		}
 		function rfc822TZ() {
 			match.length = skipSubPattern();
+			$assert(match.length === 1, "js.format.DateFormat#_compile", "Invalid time zone.");
 			match.pattern = "[+-]?\\d{4}";
 		}
 
@@ -8347,6 +8835,7 @@ js.format.DateFormat.prototype = {
 				index += match.length;
 			}
 			else {
+				$assert(!/[a-zA-Z]/.test(c), "js.format.DateFormat#_compile", "Invalid pattern.");
 				rex += js.util.Strings.escapeRegExp(c);
 				++index;
 			}
@@ -8426,6 +8915,8 @@ js.format.Duration.prototype = {
 	}(),
 
 	format : function(duration) {
+		$assert(js.lang.Types.isNumber(duration), "js.format.Duration#format", "Duration is not a number.");
+		$assert(duration >= 0, "js.format.Duration#format", "Duration is not positive.");
 		if (!duration) {
 			return this._format(0, "1");
 		}
@@ -8452,6 +8943,8 @@ js.format.Duration.prototype = {
 	parse : function(string) {
 		this._VALID_INPUT.lastIndex = 0;
 		var m = this._VALID_INPUT.exec(string);
+		$assert(m !== null && m.length === 3, "js.format.Duration#parse", "Invalid duration format.");
+
 		var value = this._numberFormat.parse(m[1]);
 		var unit = m[2];
 		for ( var t in js.format.Duration.Unit) {
@@ -8488,6 +8981,8 @@ js.format.Factory = {
 		}
 
 		var clazz = js.lang.Class.forName(className);
+		$assert(js.lang.Types.isFunction(clazz), "js.format.Factory#getFormat", "Formatter class is not a function.");
+
 		instance = new clazz();
 		this._pool[className] = instance;
 		return instance;
@@ -8530,6 +9025,8 @@ js.format.FileSize.prototype = {
     }(),
 
     format : function (fileSize) {
+        $assert(js.lang.Types.isNumber(fileSize), "js.format.FileSize#format", "File size is not a number.");
+        $assert(fileSize >= 0, "js.format.FileSize#format", "File size is not positive.");
         if (!fileSize) {
             return this._format(0, "1");
         }
@@ -8556,6 +9053,8 @@ js.format.FileSize.prototype = {
     parse : function (string) {
         this._VALID_INPUT.lastIndex = 0;
         var m = this._VALID_INPUT.exec(string);
+        $assert(m !== null && m.length === 3, "js.format.FileSize#parse", "Invalid file size format.");
+
         var value = this._numberFormat.parse(m[1]);
         var unit = m[2].toUpperCase();
         for ( var t in js.format.FileSize.Unit) {
@@ -8693,11 +9192,13 @@ js.format.NumberFormat = function (pattern) {
 
 js.format.NumberFormat.prototype = {
     setGroupingUsed : function (value) {
+        $assert(js.lang.Types.isBoolean(value), "js.format.NumberFormat#setGroupingUsed", "Value is not boolean.");
         this._groupingUsed = value;
         return this;
     },
 
     setMinimumFractionDigits : function (value) {
+        $assert(js.lang.Types.isNumber(value), "js.format.NumberFormat#setMinimumFractionDigits", "Value is not a number.");
         this._minimumFractionDigits = value;
         if (this._minimumFractionDigits > this._maximumFractionDigits) {
             this._maximumFractionDigits = this._minimumFractionDigits;
@@ -8706,6 +9207,7 @@ js.format.NumberFormat.prototype = {
     },
 
     setMaximumFractionDigits : function (value) {
+        $assert(js.lang.Types.isNumber(value), "js.format.NumberFormat#setMaximumFractionDigits", "Value is not a number.");
         this._maximumFractionDigits = value;
         if (this._maximumFractionDigits < this._minimumFractionDigits) {
             this._minimumFractionDigits = this._maximumFractionDigits;
@@ -8714,6 +9216,7 @@ js.format.NumberFormat.prototype = {
     },
 
     setMinimumIntegerDigits : function (value) {
+        $assert(js.lang.Types.isNumber(value), "js.format.NumberFormat#setMinimumIntegerDigits", "Value is not a number.");
         this._minimumIntegerDigits = value;
         if (this._minimumIntegerDigits > this._maximumIntegerDigits) {
             this._maximumIntegerDigits = this._minimumIntegerDigits;
@@ -8722,6 +9225,7 @@ js.format.NumberFormat.prototype = {
     },
 
     setMaximumIntegerDigits : function (value) {
+        $assert(js.lang.Types.isNumber(value), "js.format.NumberFormat#setMaximumIntegerDigits", "Value is not a number.");
         this._maximumIntegerDigits = value;
         if (this._maximumIntegerDigits < this._minimumIntegerDigits) {
             this._minimumIntegerDigits = this._maximumIntegerDigits;
@@ -8735,6 +9239,8 @@ js.format.NumberFormat.prototype = {
     },
 
     _formatNumericPart : function (number) {
+        $assert(js.lang.Types.isNumber(number), "js.format.NumberFormat#_formatNumericPart", "Argument is not a number.");
+
         var value = number.toString();
         var parts = value.split(".");
         var integerPart = parts[0], i;
@@ -8788,6 +9294,7 @@ js.format.NumberFormat.prototype = {
     },
 
     _parseNumericPart : function (string) {
+        $assert(string, "js.format.NumberFormat#_parseNumericPart", "Argument is not a string.");
         if (!string) {
             return null;
         }
@@ -8861,11 +9368,14 @@ js.format.NumberFormat.prototype = {
     },
 
     _extractNumericPart : function (source) {
+        $assert(this._validInput !== null, "js.format.NumberFormat#_extractNumericPart", "Invalid input.");
         this._validInput.lastIndex = 0;
         var m = this._validInput.exec(source);
+        $assert(m !== null, "js.format.NumberFormat#_extractNumericPart", "Source does not match.");
         if (m === null) {
             return null;
         }
+        $assert(typeof m[1] !== "undefined", "js.format.NumberFormat#_extractNumericPart", "Source does not match.");
         if (typeof m[1] === "undefined") {
             return null;
         }
@@ -8926,6 +9436,7 @@ js.format.Percent = function () {
 
 js.format.Percent.prototype = {
     format : function (percent) {
+        $assert(js.lang.Types.isNumber(percent), "js.format.Percent#format", "Percent is not a number.");
         return this._numberFormat.format(100 * percent);
     },
 
@@ -8982,6 +9493,7 @@ $extends(js.format.StandardTime, js.format.AbstractDateTime);
 $package("js.fx");
 
 js.fx.Anim = function () {
+    $assert(arguments.length >= 1, "js.fx.Anim#Anim", "Missing descriptors.");
     var i, descriptor, defaultProperties, property;
 
     this._fxs = [];
@@ -8989,6 +9501,7 @@ js.fx.Anim = function () {
     defaultProperties = {};
     for (i = 0; i < arguments.length; i++) {
         descriptor = arguments[i];
+        $assert(descriptor, "js.fx.Anim#Anim", "Descriptor object is undefined or null.");
         if (descriptor.defaultProperties) {
             delete descriptor.defaultProperties;
             defaultProperties = descriptor;
@@ -9003,6 +9516,11 @@ js.fx.Anim = function () {
                 descriptor[property] = defaultProperties[property];
             }
         }
+        $assert(descriptor.el || descriptor.render, "js.fx.Anim#Anim", "Descriptor <element> is undefined or null but no user defined render.");
+        $assert(descriptor.style || descriptor.render, "js.fx.Anim#Anim", "Descriptor <style> is undefined or null but no user defined render.");
+        $assert(typeof descriptor.from !== "undefined" && descriptor.from !== null, "js.fx.Anim#Anim", "Descriptor <from> is undefined or null.");
+        $assert(typeof descriptor.to !== "undefined" && descriptor.to !== null, "js.fx.Anim#Anim", "Descriptor <to> is undefined or null.");
+
         this._fxs.push(new js.fx.Effect(descriptor));
     }
 
@@ -9160,6 +9678,13 @@ js.fx.Descriptor = {
 $package("js.fx");
 
 js.fx.Effect = function (descriptor) {
+    $assert(!descriptor.el || js.lang.Types.isElement(descriptor.el), "js.fx.Effect#Effect", "Element argument is not a valid j(s)-lib element.");
+    $assert(!descriptor.style || js.lang.Types.isString(descriptor.style), "js.fx.Effect#Effect", "Style argument should be a not empty string.");
+    $assert(!descriptor.render || js.lang.Types.isFunction(descriptor.render), "js.fx.Effect#Effect", "Render argument should be a function.");
+    $assert(js.lang.Types.isNumber(descriptor.from), "js.fx.Effect#Effect", "Not numeric start value.");
+    $assert(js.lang.Types.isNumber(descriptor.to), "js.fx.Effect#Effect", "Not numeric end value.");
+    $assert(descriptor.from !== descriptor.to, "js.fx.Effect#Effect", "Same value for start and end.");
+
     this.running = false;
 
     this.offset = descriptor.offset || 0;
@@ -9215,6 +9740,7 @@ $extends(js.fx.TTF.Swing, Object);
 $package('js.lang');
 
 js.lang.AssertException = function() {
+    $assert(this instanceof js.lang.AssertException, 'js.lang.AssertException#AssertException', 'Invoked as function.');
     this.$super(arguments);
 
     this.name = 'j(s)-lib assertion';
@@ -9235,6 +9761,9 @@ js.lang.Class = {
 	_cache : {},
 
 	forName : function(className) {
+		$assert(className, "js.lang.Class#forName", "Undefined, null or empty class name.");
+		$assert(js.lang.Types.isString(className), "js.lang.Class#forName", "Expected string but got %s.", js.lang.Types.getTypeName(className));
+
 		var clazz = this._cache[className];
 		if (typeof clazz !== "undefined") {
 			return clazz;
@@ -9288,6 +9817,7 @@ $package("js.lang");
 
 js.lang.JSON = {
     parse : function (json) {
+        $assert(json, "js.lang.JSON#parse", "JSON string is undefined, null or empty.");
         return JSON.parse(json, function (key, value) {
             if (js.lang.Types.isString(value)) {
                 var d = js.lang.JSON._json2date(value);
@@ -9300,10 +9830,15 @@ js.lang.JSON = {
     },
 
     stringify : function (value) {
+        $assert(typeof value !== "undefined", "js.lang.JSON#stringify", "Value is undefined.");
         return JSON.stringify(value);
     },
 
     load : function (url, callback, scope) {
+        $assert(js.lang.Types.isString(url), "js.lang.JSON#load", "URL is not string.");
+        $assert(js.lang.Types.isFunction(callback), "js.lang.JSON#load", "Callback is not a function.");
+        $assert(js.lang.Types.isStrictObject(scope), "js.lang.JSON#load", "Scope is not strict object.");
+
         var xhr = new XMLHttpRequest();
         xhr.open("GET", url, true);
         xhr.setRequestHeader("Accept", "application/json");
@@ -9374,6 +9909,8 @@ js.lang.OPP = {
     },
 
     _get : function (obj, opp, i) {
+        $assert(i === opp.length || js.lang.Types.isObject(obj), "js.lang.OPP#_get", "Invalid property. Expected Object but got primitive.");
+        $assert(js.lang.Types.isArray(opp), "js.lang.OPP#_get", "OPP argument is not an array.");
         if (typeof obj !== "undefined" && obj !== null && i < opp.length) {
             obj = this._get(obj[opp[i++]], opp, i);
         }
@@ -9385,6 +9922,10 @@ js.lang.OPP = {
     },
 
     _set : function (obj, opp, i, value) {
+        $assert(typeof obj === "object", "js.lang.OPP#_set", "Target object is undefined or not of Object type.");
+        $assert(js.lang.Types.isArray(opp), "js.lang.OPP#_set", "OPP is not an array.");
+        $assert(typeof value !== "undefined", "js.lang.OPP#_set", "Value is undefined for property path |%s|. Object dump: %s", opp.toString(), JSON.stringify(obj));
+
         // iterate till OPP right most element
         if (i === opp.length - 1) {
             obj[opp[i]] = value;
@@ -9392,6 +9933,7 @@ js.lang.OPP = {
         }
 
         obj = obj[opp[i]];
+        $assert(obj !== null && typeof obj === "object", "js.lang.OPP#_set", "Path component |%d| from |%s| points to undefined, null or not Object type.", i, opp.join('.'));
         if (obj === null || typeof obj !== "object") {
             return;
         }
@@ -9406,6 +9948,8 @@ js.lang.OPP = {
 $package("js.lang");
 
 js.lang.Uniterator = function (value) {
+    $assert(this instanceof js.lang.Uniterator, "js.lang.Uniterator#Uniterator", "Invoked as function.");
+    $assert(arguments.length === 1, "js.lang.Uniterator#Uniterator", "Missing argument.");
     if (arguments.length !== 1) {
         value = js.lang.Uniterator._EMPTY_ARRAY;
     }
@@ -9445,6 +9989,7 @@ js.lang.Uniterator.prototype = {
     },
 
     next : function () {
+        $assert(this._index < this._items.length, "js.lang.Uniterator#next", "Iteration out of range.");
         return this._items.item(this._index++);
     },
 
@@ -9486,6 +10031,8 @@ js.net.ReadyState =
 $package("js.net");
 
 js.net.RMI = function() {
+	$assert(this instanceof js.net.RMI, "js.net.RMI#RMI", "Invoked as function.");
+
 	this._remoteContextURL = null;
 
 	this._forceSynchronousMode = false;
@@ -9496,12 +10043,17 @@ js.net.RMI = function() {
 				this._remoteContextURL = arguments[0];
 			}
 			else {
+				$assert(js.lang.Types.isBoolean(arguments[0]), "js.net.RMI#RMI", "Invalid argument type |%s|. Expected String or Boolean.", typeof arguments[0]);
 				this._forceSynchronousMode = arguments[0];
 			}
 		}
 		else {
+			$assert(arguments.length < 3, "js.net.RMI#RMI", "Invalid number of arguments |%d|.", arguments.length);
+
+			$assert(js.lang.Types.isString(arguments[0]), "js.net.RMI#RMI", "Invalid remote context URL argument type |%s|.", typeof arguments[0]);
 			this._remoteContextURL = arguments[0];
 
+			$assert(js.lang.Types.isBoolean(arguments[1]), "js.net.RMI#RMI", "Invalid force synchronous mode argument type |%s|.", typeof arguments[1]);
 			this._forceSynchronousMode = arguments[1];
 		}
 	}
@@ -9545,6 +10097,8 @@ js.net.RMI._getLoopValue = function(rmi) {
 
 js.net.RMI.prototype = {
 	setMethod : function(className, methodName) {
+		$assert(className && js.lang.Types.isString(className), "js.net.RMI#setMethod", "Class name is undefined, null, empty or not a string.");
+		$assert(methodName && js.lang.Types.isString(methodName), "js.net.RMI#setMethod", "Method name is undefined, null, empty or not a string.");
 		if (className && methodName) {
 			this._className = className;
 			this._methodName = methodName;
@@ -9553,6 +10107,8 @@ js.net.RMI.prototype = {
 	},
 
 	setParameters : function(parameters) {
+		$assert(arguments.length > 0, "js.net.RMI#setParameters", "Missing argument.");
+		$assert(typeof parameters !== "undefined", "js.net.RMI#setParameters", "Undefined parameter(s).");
 		if (typeof parameters === "undefined") {
 			return this;
 		}
@@ -9579,6 +10135,7 @@ js.net.RMI.prototype = {
 		}
 
 		for (var i = 0; i < arguments.length; ++i) {
+			$assert(typeof arguments[i] !== "undefined", "js.net.RMI#addParameter", "Argument is undefined.");
 			if (typeof arguments[i] !== "undefined") {
 				this._parameters.push(arguments[i]);
 			}
@@ -9587,12 +10144,18 @@ js.net.RMI.prototype = {
 	},
 
 	setErrorHandler : function(errorHandler, errorHandlerScope) {
+		$assert(js.lang.Types.isFunction(errorHandler), "js.net.RMI#setErrorHandler", "Error handler parameter is not a function.");
+		$assert(typeof errorHandlerScope === "undefined" || js.lang.Types.isObject(errorHandlerScope), "js.net.RMI#setErrorHandler", "Error handler scope parameter is not an object.");
+
 		this._errorHandler = errorHandler;
 		this._errorHandlerScope = errorHandlerScope;
 		return this;
 	},
 
 	exec : function(callback, scope) {
+		$assert(typeof callback === "undefined" || js.lang.Types.isFunction(callback), "js.net.RMI#exec", "Callback parameter is not a function.");
+		$assert(typeof scope === "undefined" || js.lang.Types.isObject(scope), "js.net.RMI#exec", "Scope parameter is not an object.");
+
 		this._callback = callback;
 		this._scope = scope || window;
 		if (js.net.RMI._hasLoop(this)) {
@@ -9650,6 +10213,7 @@ $extends(js.net.RMI, Object);
 $package("js.net");
 
 js.net.WebSocket = function () {
+    $assert(arguments.length, "js.net.WebSocket#WebSocket", "Missing argument(s).");
     var url, subProtocol;
     if (arguments.length === 2) {
         url = arguments[0];
@@ -9660,6 +10224,9 @@ js.net.WebSocket = function () {
         url = $format("ws://%s:%d/%s/sock.wsp", u.host, u.port, u.path);
         subProtocol = arguments[0];
     }
+    $assert(url, "js.net.WebSocket#WebSocket", "URL is undefined, null or empty.");
+    $assert(subProtocol, "js.net.WebSocket#WebSocket", "Sub-protocol is undefined, null or empty.");
+
     this._events = new js.event.CustomEvents();
     this._events.register("open", "close", "message", "error");
 
@@ -9710,6 +10277,8 @@ $extends(js.net.WebSocket, Object);
 $package("js.net");
 
 js.net.XHR = function() {
+	$assert(this instanceof js.net.XHR, "js.net.XHR#XHR", "Invoked as function.");
+
 	this._url = null;
 
 	this._request = new XMLHttpRequest();
@@ -9731,6 +10300,7 @@ js.net.XHR.VALID_HEADER = /^[A-Z0-9\-\/\s,\.]+$/gi;
 
 js.net.XHR.prototype = {
 	on : function(type, listener, scope) {
+		$assert(this._state === js.net.XHR.StateMachine.CREATED, "js.net.XHR#on", "Illegal state.");
 		if (type === "progress") {
 			this._request.upload.addEventListener("progress", function(ev) {
 				this._events.fire("progress", ev);
@@ -9741,6 +10311,8 @@ js.net.XHR.prototype = {
 	},
 
 	setTimeout : function(timeout) {
+		$assert(js.lang.Types.isNumber(timeout), "js.net.XHR#setTimeout", "Timeout is not a number.");
+		$assert(timeout >= 0, "js.net.XHR#setTimeout", "Timeout is not strict positive.");
 		this._timeout.set(timeout);
 		return this;
 	},
@@ -9750,6 +10322,9 @@ js.net.XHR.prototype = {
 			js.net.XHR.VALID_HEADER.lastIndex = 0;
 			return str && js.net.XHR.VALID_HEADER.test(str);
 		}
+		$assert(this._state === js.net.XHR.StateMachine.OPENED, "js.net.XHR#setHeader", "Illegal state.");
+		$assert(isValid(header), "js.net.XHR#setHeader", "Header name is invalid.");
+		$assert(isValid(value), "js.net.XHR#setHeader", "Header value is invalid.");
 		return this._setHeader(header, value);
 	},
 
@@ -9759,19 +10334,29 @@ js.net.XHR.prototype = {
 	},
 
 	getHeader : function(header) {
+		$assert(this._state === js.net.XHR.StateMachine.DONE, "js.net.XHR#getHeader", "Illegal state.");
 		return this._request.getResponseHeader(header);
 	},
 
 	getStatus : function() {
+		$assert(this._state === js.net.XHR.StateMachine.DONE, "js.net.XHR#getStatus", "Illegal state.");
 		return window.parseInt(this._request.status, 10);
 	},
 
 	getStatusText : function() {
+		$assert(this._state === js.net.XHR.StateMachine.DONE, "js.net.XHR#getStatusText", "Illegal state.");
 		return this._request.statusText;
 	},
 
 	open : function(method, url, async, user, password) {
+		$assert(this._state === js.net.XHR.StateMachine.CREATED, "js.net.XHR#open", "Illegal state.");
 		this._state = js.net.XHR.StateMachine.OPENED;
+
+		$assert(method, "js.net.XHR#open", "Undefined or null method.");
+		$assert(url, "js.net.XHR#open", "Undefined or null URL.");
+		$assert(typeof async === "undefined" || js.lang.Types.isBoolean(async), "js.net.XHR#open", "Asynchronous flag is not boolean.");
+		$assert(typeof user === "undefined" || js.lang.Types.isString(user), "js.net.XHR#open", "User is not string.");
+		$assert(typeof password === "undefined" || js.lang.Types.isString(password), "js.net.XHR#open", "Password is not string.");
 
 		this._url = url;
 		if (typeof async === "undefined") {
@@ -9799,6 +10384,7 @@ js.net.XHR.prototype = {
 	},
 
 	send : function(data) {
+		$assert(this._state === js.net.XHR.StateMachine.OPENED, "js.net.XHR#send", "Illegal state.");
 		this._state = js.net.XHR.StateMachine.SENDING;
 
 		// send void --------------------------------------
@@ -9960,6 +10546,7 @@ js.net.XHR.prototype = {
 
 		if (this._request.status === 400) {
 			if (contentType.indexOf("application/json") !== -1) {
+				$assert(contentType.indexOf("json") !== -1, "js.net.XHR#_processResponse", "Bad content type for business constrain exception.");
 				er = js.lang.JSON.parse(this._request.responseText);
 				$debug("js.net.XHR#_processResponse", "Broken business constrain: 0x%4X", er.errorCode);
 				WinMain.page.onBusinessFail(er);
@@ -10079,6 +10666,12 @@ js.ua.Cookies = {
     MAX_LENGTH : 4096,
 
     set : function (name, value, expires, path, domain, secure) {
+        $assert(typeof name !== "undefined" && this.isValidName(name), "js.ua.Cookies#set", "Invalid cookie name |%s|.", name);
+        $assert(typeof expires === "undefined" || js.lang.Types.isDate(expires), "js.ua.Cookies#set", "Expires is not date type.");
+        $assert(typeof path === "undefined" || this.isValidValue(path), "js.ua.Cookies#set", "Path is not string.");
+        $assert(typeof domain === "undefined" || this.isValidValue(domain), "js.ua.Cookies#set", "Domain is not string.");
+        $assert(typeof secure === "undefined" || js.lang.Types.isBoolean(secure), "js.ua.Cookies#set", "Secure is not boolean.");
+
         // convert value to string and store type information as comments suffix
         // suffix is as follow:
         // -b boolean
@@ -10101,6 +10694,7 @@ js.ua.Cookies = {
             value = js.lang.JSON.stringify(value);
         }
         else if (js.lang.Types.isString(value)) {
+            $assert(this.isValidValue(value), "js.ua.Cookies#set", "Invalid cookie value.");
             comment += "s";
         }
         else if (js.lang.Types.isArray(value)) {
@@ -10117,6 +10711,10 @@ js.ua.Cookies = {
     },
 
     get : function (name, value, expires) {
+        $assert(name, "js.ua.Cookies#get", "Name is undefined, null or empty.");
+        $assert(typeof value === "undefined" || this.isValidValue(value), "js.ua.Cookies#get", "Invalid cookie value.");
+        $assert(typeof expires === "undefined" || js.lang.Types.isDate(expires), "js.ua.Cookies#get", "Expires is not date type.");
+
         var cookies = this._getCookies();
         var rex = new RegExp("(?:^|.*;\\s*)" + name + "\\s*\\=\\s*([^;]+)(?:;\\s*comment=j\\(s\\)\\-lib\\-([bndsoa]))?.*");
         var match = rex.exec(cookies);
@@ -10142,6 +10740,7 @@ js.ua.Cookies = {
     },
 
     has : function (name) {
+        $assert(name, "js.ua.Cookies#has", "Name is undefined, null or empty.");
         var cookies = this._getCookies();
         var rex = new RegExp("(?:^|;\\s*)" + name + "\\s*\\=");
         return rex.test(cookies);
@@ -10176,6 +10775,7 @@ js.ua.Cookies = {
     },
 
     _setCookie : function (cookie) {
+        $assert(cookie.length < this.MAX_LENGTH);
         document.cookie = cookie;
     },
 
@@ -10212,6 +10812,7 @@ js.ua.Orientation = {
 $package("js.ua");
 
 js.ua.Page = function() {
+	$assert(this instanceof js.ua.Page, "js.ua.Page#Page", "Invoked as function.");
 	js.ua.Regional.init();
 };
 
@@ -10229,9 +10830,12 @@ js.ua.Page.$extends = function(pageSubClass) {
 	$debug("js.ua.Page.$extends", "Subclass window page %s", pageSubClass);
 	pageSubClass.$extends = js.ua.Page.extendsSubClass;
 
+	$assert(js.ua.Page._ctor === js.ua.Page, "js.ua.Page.$extends", "Only one user defined page supported.");
 	js.ua.Page._ctor = pageSubClass;
 
 	WinMain.on("pre-dom-ready", function() {
+		$assert(WinMain.page === null, "js.ua.Page.$extends", "WinMain.page should be null.");
+
 		function createMainPage() {
 			$debug("js.ua.Page#pre-dom-ready", "Create main page %s.", js.ua.Page._ctor);
 			WinMain.page = new js.ua.Page._ctor();
@@ -10267,6 +10871,8 @@ js.ua.Page.prototype = {
 	},
 
 	setIdleTimeout : function(value) {
+		$assert(js.lang.Types.isNumber(value), "js.ua.Page#setIdleTimeout", "Value is not a number.");
+		$assert(value >= 0, "js.ua.Page#setIdleTimeout", "Value is not a positive number.");
 		js.event.Handler.idleTimeout.set(value * 60 * 1000);
 	},
 
@@ -10433,6 +11039,8 @@ $legacy(js.ua.Engine.TRIDENT, function () {
 $package('js.util');
 
 js.util.AbstractTimer = function(value, callback, scope) {
+	$assert(typeof value === 'undefined' || (js.lang.Types.isNumber(value) && value >= 0), 'js.util.AbstractTimer#AbstractTimer', 'Value is not positive number.');
+
 	if (typeof value === 'undefined') {
 		value = 0;
 	}
@@ -10448,6 +11056,8 @@ js.util.AbstractTimer = function(value, callback, scope) {
 
 js.util.AbstractTimer.prototype = {
 	set : function(value) {
+		$assert(js.lang.Types.isNumber(value), 'js.util.AbstractTimer#set', 'Value is not a number.');
+		$assert(value >= 0, 'js.util.AbstractTimer#set', 'Value is not positive.');
 		if (js.lang.Types.isString(value)) {
 			value = Number(value);
 		}
@@ -10465,6 +11075,9 @@ js.util.AbstractTimer.prototype = {
 	},
 
 	setCallback : function(callback, scope) {
+		$assert(js.lang.Types.isFunction(callback), 'js.util.AbstractTimer#setCallback', 'Callback is not function.');
+		$assert(typeof scope === 'undefined' || js.lang.Types.isObject(scope), 'js.util.AbstractTimer#setCallback', 'Scope is not object.');
+
 		this._callback = callback;
 
 		this._scope = scope || window;
@@ -10592,20 +11205,24 @@ $package('js.util');
 
 js.util.Strings = {
 	trim : function(str) {
+		$assert(str, 'js.util.Strings#trim', 'String is undefined, null or empty.');
 		return str.trim();
 	},
 
 	REGEXP_PATTERN : /([\/|\.|\*|\?|\||\(|\)|\[|\]|\{|\}|\\|\^|\$])/g,
 
 	escapeRegExp : function(str) {
+		$assert(str, 'js.util.Strings#escapeRegExp', 'String is undefined, null or empty.');
 		js.util.Strings.REGEXP_PATTERN.lastIndex = 0;
 		return str.replace(js.util.Strings.REGEXP_PATTERN, '\\$1');
 	},
 
 	equalsIgnoreCase : function(reference, target) {
+		$assert(typeof reference !== 'undefined', 'js.util.Strings#equalsIgnoreCase', 'Undefined reference string.');
 		if (typeof reference === 'undefined') {
 			return false;
 		}
+		$assert(typeof target !== 'undefined', 'js.util.Strings#equalsIgnoreCase', 'Undefined target string.');
 		if (typeof target === 'undefined') {
 			return false;
 		}
@@ -10620,6 +11237,7 @@ js.util.Strings = {
 	},
 
 	startsWith : function(str, prefix) {
+		$assert(prefix, 'js.util.Strings#startsWith', 'Prefix is undefined, null or empty.');
 		if (!str) {
 			return false;
 		}
@@ -10627,6 +11245,7 @@ js.util.Strings = {
 	},
 
 	endsWith : function(str, suffix) {
+		$assert(suffix, 'js.util.Strings#endsWith', 'Suffix is undefined, null or empty.');
 		if (!str) {
 			return false;
 		}
@@ -10634,14 +11253,18 @@ js.util.Strings = {
 	},
 
 	contains : function(str, value) {
+		$assert(str, 'js.util.Strings#contains', 'String is undefined, null or empty.');
+		$assert(value, 'js.util.Strings#contains', 'Value is undefined, null or empty.');
 		return str ? str.indexOf(value) !== -1 : false;
 	},
 
 	toTitleCase : function(str) {
+		$assert(str, 'js.util.Strings#toTitleCase', 'String is undefined, null or empty.');
 		return str ? (str.charAt(0).toUpperCase() + str.substr(1).toLowerCase()) : '';
 	},
 
 	toHyphenCase : function(str) {
+		$assert(str, 'js.util.Strings#toHyphenCase', 'String is undefined, null or empty.');
 		if (!str) {
 			return '';
 		}
@@ -10653,6 +11276,7 @@ js.util.Strings = {
 	},
 
 	toScriptCase : function(str) {
+		$assert(str, 'js.util.Strings#toScriptCase', 'String is undefined, null or empty.');
 		if (!str) {
 			return '';
 		}
@@ -10668,6 +11292,10 @@ js.util.Strings = {
 	},
 
 	toPlainText : function(text, offset, length) {
+		$assert(typeof text !== "undefined" && text !== null, "js.util.Strings#toPlainText", "Text is undefined or null.");
+		$assert(typeof offset === "undefined" || js.lang.Types.isNumber(offset), "js.util.Strings#toPlainText", "Offset is not a number.");
+		$assert(typeof length === "undefined" || js.lang.Types.isNumber(length), "js.util.Strings#toPlainText", "Length is not a number.");
+
 		if (typeof offset === "undefined") {
 			offset = 0;
 		}
@@ -10717,6 +11345,8 @@ js.util.Strings = {
 	},
 
 	charsCount : function(str, ch) {
+		$assert(str, 'js.util.Strings#charsCount', 'String is undefined, null or empty.');
+		$assert(ch, 'js.util.Strings#charsCount', 'Character is undefined, null or empty.');
 		if (!str) {
 			return 0;
 		}
@@ -10750,6 +11380,7 @@ js.util.Strings = {
 	parseNameValues : function(expression) {
 		// sample expression: "name0;name1:value1;"
 
+		$assert(expression, "js.util.Strings#parseNameValues", "Expression argument is undefined, null or empty.");
 		var pairs = [];
 		if (!expression) {
 			return pairs;
@@ -10813,6 +11444,7 @@ $legacy(js.ua.Engine.TRIDENT, function() {
 	js.util.Strings.TRIM_PATTERN = /^\s+|\s+$/g;
 
 	js.util.Strings.trim = function(str) {
+		$assert(str, 'js.util.Strings#trim', 'String is undefined, null or empty.');
 		js.util.Strings.TRIM_PATTERN.lastIndex = 0;
 		return str.replace(js.util.Strings.TRIM_PATTERN, '');
 	};
@@ -10820,6 +11452,7 @@ $legacy(js.ua.Engine.TRIDENT, function() {
 $package('js.util');
 
 js.util.Timeout = function(timeout, callback, scope) {
+	$assert(js.lang.Types.isNumber(timeout), 'js.util.Timeout#Timeout', 'Timeout is not a number.');
 	if (!(this instanceof js.util.Timeout)) {
 		// if constructor invoked as function this points to package scope
 		var t = new js.util.Timeout(timeout, callback, scope);
@@ -10850,6 +11483,8 @@ $extends(js.util.Timeout, js.util.AbstractTimer);
 $package('js.util');
 
 js.util.Timer = function(interval, callback, scope) {
+	$assert(js.lang.Types.isNumber(interval), 'js.util.Timer#Timer', 'Interval is not a number.');
+
 	if (!(this instanceof js.util.Timer)) {
 		var t = new js.util.Timer(interval, callback, scope);
 		t.start();

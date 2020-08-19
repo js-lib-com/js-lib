@@ -398,12 +398,11 @@ js.dom.Element.prototype = {
 	 * 
 	 * @param Object clazz class name or constructor for class to search for.
 	 * @return js.dom.Element found element or null.
-	 * @assert <code>clazz</code> argument is not undefined, null, is of proper type and requested class exists.
+	 * @assert <code>clazz</code> argument is not undefined, null, or empty.
 	 */
 	getByClass : function(clazz) {
-		var node = js.dom.Node.getElementByClass(this._node, clazz);
-		$assert(node !== null, "js.dom.Element#getByClass", "Class |%s| not found.", clazz);
-		return this._ownerDoc.getElement(node);
+		$assert(clazz, "js.dom.Element#getByClass", "Class is undefined, null or empty.");
+		return this._ownerDoc.getElement(js.dom.Node.getElementByClass(this._node, clazz));
 	},
 
 	/**
