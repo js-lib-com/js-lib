@@ -6958,47 +6958,94 @@ $static(function() {
 });
 $package('js.dom.template');
 
-js.dom.template.OperatorFactory = function (template) {
-    $assert(template instanceof js.dom.template.Template, "js.dom.template.OperatorFactory#OperatorFactory", "Content is undefined, null or not of proper type.");
+js.dom.template.OperatorFactory = function(template) {
+	$assert(template instanceof js.dom.template.Template, "js.dom.template.OperatorFactory#OperatorFactory", "Content is undefined, null or not of proper type.");
 
-    this._template = template;
+	this._template = template;
 };
 
 js.dom.template.OperatorFactory.prototype = {
-    init : function (content) {
-        $assert(content instanceof js.dom.template.Content, "js.dom.template.OperatorFactory#init", "Content is undefined, null or not of proepr type.");
+	init : function(content) {
+		$assert(content instanceof js.dom.template.Content, "js.dom.template.OperatorFactory#init", "Content is undefined, null or not of proepr type.");
 
-        var Opcode = js.dom.template.Opcode;
-        this[Opcode.GOTO] = new js.dom.template.GotoOperator(content);
-        this[Opcode.EXCLUDE] = new js.dom.template.ExcludeOperator(content);
-        this[Opcode.IF] = new js.dom.template.IfOperator(content);
-        this[Opcode.ATTR] = new js.dom.template.AttrOperator(content);
-        this[Opcode.ID] = new js.dom.template.IdOperator(content);
-        this[Opcode.SRC] = new js.dom.template.SrcOperator(content);
-        this[Opcode.HREF] = new js.dom.template.HrefOperator(content);
-        this[Opcode.TITLE] = new js.dom.template.TitleOperator(content);
-        this[Opcode.VALUE] = new js.dom.template.ValueOperator(content);
-        this[Opcode.CSS_CLASS] = new js.dom.template.CssClassOperator(content);
-        this[Opcode.OBJECT] = new js.dom.template.ObjectOperator(content);
-        this[Opcode.TEXT] = new js.dom.template.TextOperator(content);
-        this[Opcode.HTML] = new js.dom.template.HtmlOperator(content);
-        this[Opcode.NUMBERING] = new js.dom.template.NumberingOperator(this._template, content);
-        this[Opcode.LIST] = new js.dom.template.ListOperator(this._template, content);
-        this[Opcode.OLIST] = new js.dom.template.OListOperator(this._template, content);
-        this[Opcode.MAP] = new js.dom.template.MapOperator(this._template, content);
-        this[Opcode.OMAP] = new js.dom.template.OMapOperator(this._template, content);
-        this[Opcode.OPTIONS] = new js.dom.template.OptionsOperator(content);
-    },
+		var Opcode = js.dom.template.Opcode;
+		this[Opcode.GOTO] = new js.dom.template.GotoOperator(content);
+		this[Opcode.EXCLUDE] = new js.dom.template.ExcludeOperator(content);
+		this[Opcode.IF] = new js.dom.template.IfOperator(content);
+		this[Opcode.ATTR] = new js.dom.template.AttrOperator(content);
+		this[Opcode.ID] = new js.dom.template.IdOperator(content);
+		this[Opcode.SRC] = new js.dom.template.SrcOperator(content);
+		this[Opcode.HREF] = new js.dom.template.HrefOperator(content);
+		this[Opcode.TITLE] = new js.dom.template.TitleOperator(content);
+		this[Opcode.VALUE] = new js.dom.template.ValueOperator(content);
+		this[Opcode.CSS_CLASS] = new js.dom.template.CssClassOperator(content);
+		this[Opcode.OBJECT] = new js.dom.template.ObjectOperator(content);
+		this[Opcode.TEXT] = new js.dom.template.TextOperator(content);
+		this[Opcode.HTML] = new js.dom.template.HtmlOperator(content);
+		this[Opcode.NUMBERING] = new js.dom.template.NumberingOperator(this._template, content);
+		this[Opcode.LIST] = new js.dom.template.ListOperator(this._template, content);
+		this[Opcode.OLIST] = new js.dom.template.OListOperator(this._template, content);
+		this[Opcode.MAP] = new js.dom.template.MapOperator(this._template, content);
+		this[Opcode.OMAP] = new js.dom.template.OMapOperator(this._template, content);
+		this[Opcode.OPTIONS] = new js.dom.template.OptionsOperator(content);
+	},
 
-    getInstance : function (opcode) {
-        var operator = this[opcode];
-        $assert(typeof operator !== "undefined", "js.dom.template.OperatorFactory#getInstance", "Operator |%s| is not implemented.", opcode);
-        return operator;
-    },
+	getInstance : function(opcode) {
+		var operator = this[opcode];
+		$assert(typeof operator !== "undefined", "js.dom.template.OperatorFactory#getInstance", "Operator |%s| is not implemented.", opcode);
+		return operator;
+	},
 
-    toString : function () {
-        return "js.dom.template.OperatorFactory";
-    }
+	// HACK
+	getResetOperator : function(opcode) {
+		var content = new js.dom.template.Content({});
+
+		var Opcode = js.dom.template.Opcode;
+		switch (opcode) {
+		case Opcode.GOTO:
+			return new js.dom.template.GotoOperator(content);
+		case Opcode.EXCLUDE:
+			return new js.dom.template.ExcludeOperator(content);
+		case Opcode.IF:
+			return new js.dom.template.IfOperator(content);
+		case Opcode.ATTR:
+			return new js.dom.template.AttrOperator(content);
+		case Opcode.ID:
+			return new js.dom.template.IdOperator(content);
+		case Opcode.SRC:
+			return new js.dom.template.SrcOperator(content);
+		case Opcode.HREF:
+			return new js.dom.template.HrefOperator(content);
+		case Opcode.TITLE:
+			return new js.dom.template.TitleOperator(content);
+		case Opcode.VALUE:
+			return new js.dom.template.ValueOperator(content);
+		case Opcode.CSS_CLASS:
+			return new js.dom.template.CssClassOperator(content);
+		case Opcode.OBJECT:
+			return new js.dom.template.ObjectOperator(content);
+		case Opcode.TEXT:
+			return new js.dom.template.TextOperator(content);
+		case Opcode.HTML:
+			return new js.dom.template.HtmlOperator(content);
+		case Opcode.NUMBERING:
+			return new js.dom.template.NumberingOperator(this._template, content);
+		case Opcode.LIST:
+			return new js.dom.template.ListOperator(this._template, content);
+		case Opcode.OLIST:
+			return new js.dom.template.OListOperator(this._template, content);
+		case Opcode.MAP:
+			return new js.dom.template.MapOperator(this._template, content);
+		case Opcode.OMAP:
+			return new js.dom.template.OMapOperator(this._template, content);
+		case Opcode.OPTIONS:
+			return new js.dom.template.OptionsOperator(content);
+		}
+	},
+
+	toString : function() {
+		return "js.dom.template.OperatorFactory";
+	}
 };
 $extends(js.dom.template.OperatorFactory, Object);
 $package('js.dom.template');
@@ -7367,7 +7414,7 @@ js.dom.template.Template.prototype = {
 	},
 
 	_resetOperator : function(element, meta) {
-		var operator = this._operatorFactory.getInstance(meta.opcode);
+		var operator = this._operatorFactory.getResetOperator(meta.opcode);
 		return operator.reset(element, meta.operand);
 	},
 
@@ -9883,46 +9930,49 @@ $extends(js.lang.NOP, Object);
 $package("js.lang");
 
 js.lang.OPP = {
-    get : function (obj, opp) {
-        return this._get(obj, opp.split("."), 0);
-    },
+	get : function(obj, opp) {
+		if (obj == null) {
+			return null;
+		}
+		return this._get(obj, opp.split("."), 0);
+	},
 
-    _get : function (obj, opp, i) {
-        $assert(i === opp.length || js.lang.Types.isObject(obj), "js.lang.OPP#_get", "Invalid property. Expected Object but got primitive.");
-        $assert(js.lang.Types.isArray(opp), "js.lang.OPP#_get", "OPP argument is not an array.");
-        if (typeof obj !== "undefined" && obj !== null && i < opp.length) {
-            obj = this._get(obj[opp[i++]], opp, i);
-        }
-        return obj;
-    },
+	_get : function(obj, opp, i) {
+		$assert(i === opp.length || js.lang.Types.isObject(obj), "js.lang.OPP#_get", "Invalid property. Expected Object but got primitive.");
+		$assert(js.lang.Types.isArray(opp), "js.lang.OPP#_get", "OPP argument is not an array.");
+		if (typeof obj !== "undefined" && obj !== null && i < opp.length) {
+			obj = this._get(obj[opp[i++]], opp, i);
+		}
+		return obj;
+	},
 
-    set : function (obj, opp, value) {
-        this._set(obj, opp.split("."), 0, value);
-    },
+	set : function(obj, opp, value) {
+		this._set(obj, opp.split("."), 0, value);
+	},
 
-    _set : function (obj, opp, i, value) {
-        $assert(typeof obj === "object", "js.lang.OPP#_set", "Target object is undefined or not of Object type.");
-        $assert(js.lang.Types.isArray(opp), "js.lang.OPP#_set", "OPP is not an array.");
-        $assert(typeof value !== "undefined", "js.lang.OPP#_set", "Value is undefined for property path |%s|. Object dump: %s", opp.toString(), JSON.stringify(obj));
+	_set : function(obj, opp, i, value) {
+		$assert(typeof obj === "object", "js.lang.OPP#_set", "Target object is undefined or not of Object type.");
+		$assert(js.lang.Types.isArray(opp), "js.lang.OPP#_set", "OPP is not an array.");
+		$assert(typeof value !== "undefined", "js.lang.OPP#_set", "Value is undefined for property path |%s|. Object dump: %s", opp.toString(), JSON.stringify(obj));
 
-        // iterate till OPP right most element
-        if (i === opp.length - 1) {
-            obj[opp[i]] = value;
-            return;
-        }
+		// iterate till OPP right most element
+		if (i === opp.length - 1) {
+			obj[opp[i]] = value;
+			return;
+		}
 
-        obj = obj[opp[i]];
-        $assert(obj !== null && typeof obj === "object", "js.lang.OPP#_set", "Path component |%d| from |%s| points to undefined, null or not Object type.", i, opp.join('.'));
-        if (obj === null || typeof obj !== "object") {
-            return;
-        }
-        ++i;
-        obj = this._set(obj, opp, i, value);
-    },
+		obj = obj[opp[i]];
+		$assert(obj !== null && typeof obj === "object", "js.lang.OPP#_set", "Path component |%d| from |%s| points to undefined, null or not Object type.", i, opp.join('.'));
+		if (obj === null || typeof obj !== "object") {
+			return;
+		}
+		++i;
+		obj = this._set(obj, opp, i, value);
+	},
 
-    toString : function () {
-        return "js.lang.OPP";
-    }
+	toString : function() {
+		return "js.lang.OPP";
+	}
 };
 $package("js.lang");
 

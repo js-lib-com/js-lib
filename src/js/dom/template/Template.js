@@ -267,7 +267,7 @@ js.dom.template.Template.prototype = {
 	},
 
 	_resetOperator : function(element, meta) {
-		var operator = this._operatorFactory.getInstance(meta.opcode);
+		var operator = this._operatorFactory.getResetOperator(meta.opcode);
 		return operator.reset(element, meta.operand);
 	},
 

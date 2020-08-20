@@ -68,94 +68,99 @@ $package("js.lang");
  * <td>1.6 </table>
  */
 js.lang.OPP = {
-    /**
-     * Get object property value. Return the value of object property identified by given object property path. Return
-     * undefined if property not found; note that null is a valid value. Usually returned value is a terminal one, that
-     * is, object tree leaf; anyway, if OPP is not full a sub-object can be returned.
-     * 
-     * @param Object obj object of which property value is to retrieve,
-     * @param String opp object property path.
-     * @return Object object property value or undefined.
-     */
-    get : function (obj, opp) {
-        return this._get(obj, opp.split("."), 0);
-    },
+	/**
+	 * Get object property value or undefined. Return the value of object property identified by given object property
+	 * path. Return undefined if property not found; note that null is a valid value. Usually returned value is a
+	 * terminal one, that is, object tree leaf; anyway, if OPP is not full a sub-object can be returned.
+	 * <p>
+	 * Return null if given object argument is null.
+	 * 
+	 * @param Object obj object of which property value is to retrieve, null accepted,
+	 * @param String opp object property path.
+	 * @return Object object property value or undefined. Return null if given object is null.
+	 */
+	get : function(obj, opp) {
+		if (obj == null) {
+			return null;
+		}
+		return this._get(obj, opp.split("."), 0);
+	},
 
-    /**
-     * Helper for value getter. This method is the workhorse for {@link #get(Object, String)}. It uses OPP represented
-     * as an array and traverse it recursively till completion. If, at some point, a path components is not found breaks
-     * iteration prematurely returning undefined.
-     * 
-     * @param Object obj object of which property value to retrieve,
-     * @param Array opp object property path as an array,
-     * @param Number i path component index.
-     * @return Object object property value or undefined.
-     * @assert object is valid and property path is an {@link Array}.
-     */
-    _get : function (obj, opp, i) {
-        $assert(i === opp.length || js.lang.Types.isObject(obj), "js.lang.OPP#_get", "Invalid property. Expected Object but got primitive.");
-        $assert(js.lang.Types.isArray(opp), "js.lang.OPP#_get", "OPP argument is not an array.");
-        if (typeof obj !== "undefined" && obj !== null && i < opp.length) {
-            obj = this._get(obj[opp[i++]], opp, i);
-        }
-        return obj;
-    },
+	/**
+	 * Helper for value getter. This method is the workhorse for {@link #get(Object, String)}. It uses OPP represented
+	 * as an array and traverse it recursively till completion. If, at some point, a path components is not found breaks
+	 * iteration prematurely returning undefined.
+	 * 
+	 * @param Object obj object of which property value to retrieve,
+	 * @param Array opp object property path as an array,
+	 * @param Number i path component index.
+	 * @return Object object property value or undefined.
+	 * @assert object is valid and property path is an {@link Array}.
+	 */
+	_get : function(obj, opp, i) {
+		$assert(i === opp.length || js.lang.Types.isObject(obj), "js.lang.OPP#_get", "Invalid property. Expected Object but got primitive.");
+		$assert(js.lang.Types.isArray(opp), "js.lang.OPP#_get", "OPP argument is not an array.");
+		if (typeof obj !== "undefined" && obj !== null && i < opp.length) {
+			obj = this._get(obj[opp[i++]], opp, i);
+		}
+		return obj;
+	},
 
-    /**
-     * Set object property value. Set object property, creating it if missing. Anyway, this method creates only terminal
-     * object, that is, property designated by given full OPP. All other objects from path should exist, even empty.
-     * This method just convert OPP into array and delegates {@link #_set} method for real work.
-     * 
-     * @param Object obj object to set property value to,
-     * @param String opp object property path,
-     * @param Object value value to set.
-     * @assert see {@link #_set} assertions.
-     */
-    set : function (obj, opp, value) {
-        this._set(obj, opp.split("."), 0, value);
-    },
+	/**
+	 * Set object property value. Set object property, creating it if missing. Anyway, this method creates only terminal
+	 * object, that is, property designated by given full OPP. All other objects from path should exist, even empty.
+	 * This method just convert OPP into array and delegates {@link #_set} method for real work.
+	 * 
+	 * @param Object obj object to set property value to,
+	 * @param String opp object property path,
+	 * @param Object value value to set.
+	 * @assert see {@link #_set} assertions.
+	 */
+	set : function(obj, opp, value) {
+		this._set(obj, opp.split("."), 0, value);
+	},
 
-    /**
-     * Helper for value setter. This method is delegated by {@link #set} method. It uses OPP represented as an array and
-     * traverse it recursively till completion. Once the end of property path is reached just set the given value,
-     * creating the property is missing.
-     * <p>
-     * Anyway, if a path component denotes an undefined or null property breaks iteration prematurely and rise
-     * assertion. If assertion is disabled this method silently does nothing. In both cases target object is not
-     * altered.
-     * 
-     * @param Object obj object to set value to,
-     * @param Array opp object property path as an array,
-     * @param Number i path component index,
-     * @param Object value value to set.
-     * @assert object is valid, property path argument is an {@link Array} and value is defined.
-     */
-    _set : function (obj, opp, i, value) {
-        $assert(typeof obj === "object", "js.lang.OPP#_set", "Target object is undefined or not of Object type.");
-        $assert(js.lang.Types.isArray(opp), "js.lang.OPP#_set", "OPP is not an array.");
-        $assert(typeof value !== "undefined", "js.lang.OPP#_set", "Value is undefined for property path |%s|. Object dump: %s", opp.toString(), JSON.stringify(obj));
+	/**
+	 * Helper for value setter. This method is delegated by {@link #set} method. It uses OPP represented as an array and
+	 * traverse it recursively till completion. Once the end of property path is reached just set the given value,
+	 * creating the property is missing.
+	 * <p>
+	 * Anyway, if a path component denotes an undefined or null property breaks iteration prematurely and rise
+	 * assertion. If assertion is disabled this method silently does nothing. In both cases target object is not
+	 * altered.
+	 * 
+	 * @param Object obj object to set value to,
+	 * @param Array opp object property path as an array,
+	 * @param Number i path component index,
+	 * @param Object value value to set.
+	 * @assert object is valid, property path argument is an {@link Array} and value is defined.
+	 */
+	_set : function(obj, opp, i, value) {
+		$assert(typeof obj === "object", "js.lang.OPP#_set", "Target object is undefined or not of Object type.");
+		$assert(js.lang.Types.isArray(opp), "js.lang.OPP#_set", "OPP is not an array.");
+		$assert(typeof value !== "undefined", "js.lang.OPP#_set", "Value is undefined for property path |%s|. Object dump: %s", opp.toString(), JSON.stringify(obj));
 
-        // iterate till OPP right most element
-        if (i === opp.length - 1) {
-            obj[opp[i]] = value;
-            return;
-        }
+		// iterate till OPP right most element
+		if (i === opp.length - 1) {
+			obj[opp[i]] = value;
+			return;
+		}
 
-        obj = obj[opp[i]];
-        $assert(obj !== null && typeof obj === "object", "js.lang.OPP#_set", "Path component |%d| from |%s| points to undefined, null or not Object type.", i, opp.join('.'));
-        if (obj === null || typeof obj !== "object") {
-            return;
-        }
-        ++i;
-        obj = this._set(obj, opp, i, value);
-    },
+		obj = obj[opp[i]];
+		$assert(obj !== null && typeof obj === "object", "js.lang.OPP#_set", "Path component |%d| from |%s| points to undefined, null or not Object type.", i, opp.join('.'));
+		if (obj === null || typeof obj !== "object") {
+			return;
+		}
+		++i;
+		obj = this._set(obj, opp, i, value);
+	},
 
-    /**
-     * Returns a string representation of the object.
-     * 
-     * @return String object string representation.
-     */
-    toString : function () {
-        return "js.lang.OPP";
-    }
+	/**
+	 * Returns a string representation of the object.
+	 * 
+	 * @return String object string representation.
+	 */
+	toString : function() {
+		return "js.lang.OPP";
+	}
 };
