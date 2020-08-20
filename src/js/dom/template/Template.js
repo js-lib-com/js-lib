@@ -107,9 +107,7 @@ js.dom.template.Template.prototype = {
 	 * 
 	 * <p>
 	 * In order to inject content into an element, target element should have a content operator - see
-	 * {@link js.dom.template.Opcode.Type#CONTENT} for a list of supported content operator but keep in mind that
-	 * {@link js.dom.template.Opcode#TEXT}, {@link js.dom.template.Opcode#HTML} or
-	 * {@link js.dom.template.Opcode#NUMBERING} are not allowed.
+	 * {@link js.dom.template.Opcode.Type#CONTENT} for a list of supported content operator.
 	 * 
 	 * @param js.dom.Element element injection point,
 	 * @param Object value value to inject.
@@ -117,7 +115,11 @@ js.dom.template.Template.prototype = {
 	injectElement : function(element, value) {
 		$assert(element, "js.dom.template.Template#injectElement", "Element is undefined or null.");
 		$assert(js.lang.Types.isElement(element), "js.dom.template.Template#injectElement", "Element is not of proper type.");
-		$assert(value, "js.dom.template.Template#injectElement", "Value is undefined or null.");
+		$assert(typeof value !== "undefined", "js.dom.template.Template#injectElement", "Value argument is undefined.");
+		if (value == null) {
+			this.reset(element);
+			return;
+		}
 		var content = this._init(value);
 		this._operators.initSubtree(element);
 		this._inject(element, content.getModel());

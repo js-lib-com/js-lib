@@ -2534,7 +2534,7 @@ js.dom.Element.prototype = {
 	},
 
 	hasCssClass : function(cssClass) {
-		$assert(cssClass, "js.dom.Element#hasCssClass", "CSS class is undefined, null or empty.");
+		$assert(cssClass, "js.dom.Element#hasCssClass", "CSS class argument is undefined, null or empty.");
 		if (!cssClass) {
 			return false;
 		}
@@ -2598,8 +2598,6 @@ js.dom.Element.prototype = {
 
 	setObject : function(value) {
 		$assert(!arguments.callee.__super_call__, "js.dom.Element#setObject", "$super call on setObject from subclass is not allowed! It creates circular dependencies.");
-		$assert(!js.lang.Types.isPrimitive(value), "js.dom.Element#setObject", "Primitive value not supported.");
-		$assert(js.lang.Types.isArray(value) || this.hasChildren(), "js.dom.Element#setObject", "Unsupported state: this element has no child.");
 		this._ownerDoc._template.injectElement(this, value);
 		return this;
 	},
@@ -2619,7 +2617,12 @@ js.dom.Element.prototype = {
 
 		var element = templateElement.clone(true);
 		element.setUserData("value", value);
-		element.setObject(value);
+		if (value != null) {
+			element.setObject(value);
+		}
+		else {
+			element.resetObject();
+		}
 		this.addChild(element);
 		return this;
 	},
@@ -2974,7 +2977,7 @@ $legacy(js.ua.Engine.TRIDENT || js.ua.Engine.MOBILE_WEBKIT, function() {
 	};
 
 	js.dom.Element.prototype.hasCssClass = function(cssClass) {
-		$assert(cssClass, "js.dom.Element#hasCssClass", "CSS class is undefined, null or empty.");
+		$assert(cssClass, "js.dom.Element#hasCssClass", "CSS class argument is undefined, null or empty.");
 		if (!cssClass) {
 			return false;
 		}
@@ -3136,18 +3139,6 @@ js.dom.Control.prototype = {
 
 	CSS_INVALID : "invalid",
 
-	getName : function() {
-		var name = this.getAttr("name");
-		if (name === null) {
-			name = this.getAttr("data-name");
-		}
-		else {
-			$assert(!this._node.hasAttribute("data-name"), "js.dom.Control#getName", "Both <name> and <data-name> attributes present on control |%s|.", this);
-		}
-		$assert(name !== null, "js.dom.Control#getName", "Control |%s| has no name.", this);
-		return name;
-	},
-
 	setValue : function(value) {
 		this.removeCssClass(this.CSS_INVALID);
 
@@ -3156,7 +3147,7 @@ js.dom.Control.prototype = {
 			return this;
 		}
 
-		$assert(this.getAttr("type") === "hidden" || this.style.get("display") !== "none", "js.dom.Control#setValue", "Display is none.");
+		$assert(this.getAttr("type") === "hidden" || this.style.get("display") !== "none", "js.dom.Control#setValue", "Control |%s| has display none.", this);
 		if (value === null) {
 			return this._clean();
 		}
@@ -4524,6 +4515,10 @@ js.dom.ImageControl = function(ownerDoc, node) {
 };
 
 js.dom.ImageControl.prototype = {
+	CSS_OPTIONAL : "optional",
+
+	CSS_INVALID : "invalid",
+
 	setValue : function(src) {
 		if (!src) {
 			return this.reset();
@@ -6420,8 +6415,9 @@ js.dom.template.ListOperator.prototype = {
 		return undefined;
 	},
 
-	_reset : function() {
+	_reset : function(element) {
 		// take care to initialize item template in case is not already initialized
+		// ignore returned value for next statement; it initializes element user data as side effect
 		this._getItemTemplate(element);
 		element.removeChildren();
 	},
@@ -7007,164 +7003,143 @@ js.dom.template.OperatorFactory.prototype = {
 $extends(js.dom.template.OperatorFactory, Object);
 $package('js.dom.template');
 
-js.dom.template.OperatorsList = function () {
-    this._jumpOperator = null;
+js.dom.template.OperatorsList = function() {
+	this._jumpOperator = null;
 
-    this._conditionalOperator = null;
+	this._conditionalOperator = null;
 
-    this._formattingOperator = null;
+	this._formattingOperator = null;
 
-    this._contentOperator = null;
+	this._contentOperator = null;
 
-    this._attributeOperators = [];
+	this._attributeOperators = [];
 };
 
 js.dom.template.OperatorsList.prototype = {
-    initElement : function (element) {
-        // reset this operators list content because instance is reused
-        this._jumpOperator = null;
-        this._conditionalOperator = null;
-        this._formattingOperator = null;
-        this._contentOperator = null;
-        this._attributeOperators = [];
+	initElement : function(element) {
+		// reset this operators list content because instance is reused
+		this._jumpOperator = null;
+		this._conditionalOperator = null;
+		this._formattingOperator = null;
+		this._contentOperator = null;
+		this._attributeOperators = [];
 
-        var Opcode = js.dom.template.Opcode;
-        var attrs = element.getNode().attributes;
-        var attr, i, opcode, type, meta;
+		var Opcode = js.dom.template.Opcode;
+		var attrs = element.getNode().attributes;
+		var attr, i, opcode, type, meta;
 
-        for (i = 0; i < attrs.length; i++) {
-            attr = attrs[i];
+		for (i = 0; i < attrs.length; i++) {
+			attr = attrs[i];
 
-            opcode = Opcode.fromAttrName(attr.nodeName);
-            if (opcode === Opcode.NONE) {
-                continue;
-            }
-            $assert(attr.value.length !== 0, "js.dom.template.OperatorsList#initElement", "Empty operand on element |%s| for opcode |%s|.", element, opcode);
+			opcode = Opcode.fromAttrName(attr.nodeName);
+			if (opcode === Opcode.NONE) {
+				continue;
+			}
+			$assert(attr.value.length !== 0, "js.dom.template.OperatorsList#initElement", "Empty operand on element |%s| for opcode |%s|.", element, opcode);
 
-            meta = {
-                opcode : opcode,
-                operand : attr.value
-            };
+			meta = {
+				opcode : opcode,
+				operand : attr.value
+			};
 
-            type = Opcode.type(opcode);
-            switch (type) {
-            case Opcode.Type.JUMP:
-                this._insanityCheck(element, this._jumpOperator, type);
-                this._jumpOperator = meta;
-                break;
+			type = Opcode.type(opcode);
+			switch (type) {
+			case Opcode.Type.JUMP:
+				this._insanityCheck(element, this._jumpOperator, type);
+				this._jumpOperator = meta;
+				break;
 
-            case Opcode.Type.CONDITIONAL:
-                this._insanityCheck(element, this._conditionalOperator, type);
-                this._conditionalOperator = meta;
-                break;
+			case Opcode.Type.CONDITIONAL:
+				this._insanityCheck(element, this._conditionalOperator, type);
+				this._conditionalOperator = meta;
+				break;
 
-            case Opcode.Type.FORMATTING:
-                this._insanityCheck(element, this._formattingOperator, type);
-                this._formattingOperator = meta;
-                break;
+			case Opcode.Type.FORMATTING:
+				this._insanityCheck(element, this._formattingOperator, type);
+				this._formattingOperator = meta;
+				break;
 
-            case Opcode.Type.CONTENT:
-                this._insanityCheck(element, this._contentOperator, type);
-                this._contentOperator = meta;
-                break;
+			case Opcode.Type.CONTENT:
+				this._insanityCheck(element, this._contentOperator, type);
+				this._contentOperator = meta;
+				break;
 
-            case Opcode.Type.ATTRIBUTE:
-                this._attributeOperators.push(meta);
-                break;
+			case Opcode.Type.ATTRIBUTE:
+				this._attributeOperators.push(meta);
+				break;
 
-            default:
-                $assert(false, "js.dom.template.OperatorsList#initElement", "Invalid operators list on element |%s|. Unknown opcode type |%s|.", element, Opcode.Type.name(type));
-            }
-        }
-    },
+			default:
+				$assert(false, "js.dom.template.OperatorsList#initElement", "Invalid operators list on element |%s|. Unknown opcode type |%s|.", element, Opcode.Type.name(type));
+			}
+		}
+	},
 
-    initItem : function (element) {
-        this.initElement(element);
-        if (this._contentOperator === null) {
-            var opcode = element.hasChildren() ? js.dom.template.Opcode.OBJECT : js.dom.template.Opcode.TEXT;
-            this._contentOperator = {
-                opcode : opcode,
-                operand : "."
-            };
-        }
-    },
+	initItem : function(element) {
+		this.initElement(element);
+		if (this._contentOperator === null) {
+			var opcode = element.hasChildren() ? js.dom.template.Opcode.OBJECT : js.dom.template.Opcode.TEXT;
+			this._contentOperator = {
+				opcode : opcode,
+				operand : "."
+			};
+		}
+	},
 
-    initSubtree : function (element) {
-        this.initElement(element);
+	initSubtree : function(element) {
+		this.initElement(element);
+		if (this._contentOperator === null) {
+			this._contentOperator = {
+				opcode : js.dom.template.Opcode.OBJECT,
+				operand : "."
+			};
+		}
+	},
 
-        // TODO hack for subtree injection
-        if (this._contentOperator === null) {
-            this._contentOperator = {
-                opcode : js.dom.template.Opcode.OBJECT,
-                operand : "."
-            };
-        }
+	hasJumpOperator : function() {
+		return this._jumpOperator !== null;
+	},
 
-        // TODO because of above hack this condition is always true 
-        if (this._contentOperator !== null) {
-            $assert(this._contentOperator.opcode !== js.dom.template.Opcode.TEXT, "js.dom.template.OperatorsList#initSubtree", "Subtree initializer forbids TEXT operator.");
-            $assert(this._contentOperator.opcode !== js.dom.template.Opcode.HTML, "js.dom.template.OperatorsList#initSubtree", "Subtree initializer forbids HTML operator.");
-            $assert(this._contentOperator.opcode !== js.dom.template.Opcode.NUMBERING, "js.dom.template.OperatorsList#initSubtree", "Subtree initializer forbids NUMBERING operator.");
-            this._contentOperator.operand = ".";
-            return;
-        }
+	hasConditionalOperator : function() {
+		return this._conditionalOperator !== null;
+	},
 
-        // TODO because of above hack we never step here
-        var message = $format("Missing content operator. Element not usable for template injection:\r\n" + //
-        "\t- trace: %s\r\n" + //
-        "\t- dump: %s\r\n" + //
-        "Note that element attributes does not contain a content operator.\r\n" + //
-        "See js.dom.template.Opcode.Type#CONTENT for a list of content operators.", element.trace(), element.dump());
-        $error("js.dom.template.OperatorsList#initSubtree", message);
+	hasContentOperator : function() {
+		return this._contentOperator !== null;
+	},
 
-        $assert(false, "js.dom.template.OperatorsList#initSubtree", "Missing content operator. Element not usable for template injection. See error log.");
-    },
+	getJumpOperatorMeta : function() {
+		$assert(this._jumpOperator !== null, "js.dom.template.OperatorsList#getJumpOperatorMeta", "Jump operator is null.");
+		return this._jumpOperator;
+	},
 
-    hasJumpOperator : function () {
-        return this._jumpOperator !== null;
-    },
+	getConditionalOperatorMeta : function() {
+		$assert(this._conditionalOperator !== null, "js.dom.template.OperatorsList#getConditionalOperatorMeta", "Conditional operator is null.");
+		return this._conditionalOperator;
+	},
 
-    hasConditionalOperator : function () {
-        return this._conditionalOperator !== null;
-    },
+	getContentOperatorMeta : function() {
+		$assert(this._contentOperator !== null, "js.dom.template.OperatorsList#getContentOperatorMeta", "Content operator is null.");
+		return this._contentOperator;
+	},
 
-    hasContentOperator : function () {
-        return this._contentOperator !== null;
-    },
+	getAttributeOperatorsMeta : function() {
+		return this._attributeOperators;
+	},
 
-    getJumpOperatorMeta : function () {
-        $assert(this._jumpOperator !== null, "js.dom.template.OperatorsList#getJumpOperatorMeta", "Jump operator is null.");
-        return this._jumpOperator;
-    },
+	_insanityCheck : function(element, meta, type) {
+		$assert(meta === null, "js.dom.template.OperatorsList#_insanityCheck", "Invalid operators list on element |%s|. Only one %s operator is allowed.", element, js.dom.template.Opcode.Type.name(type));
+	},
 
-    getConditionalOperatorMeta : function () {
-        $assert(this._conditionalOperator !== null, "js.dom.template.OperatorsList#getConditionalOperatorMeta", "Conditional operator is null.");
-        return this._conditionalOperator;
-    },
-
-    getContentOperatorMeta : function () {
-        $assert(this._contentOperator !== null, "js.dom.template.OperatorsList#getContentOperatorMeta", "Content operator is null.");
-        return this._contentOperator;
-    },
-
-    getAttributeOperatorsMeta : function () {
-        return this._attributeOperators;
-    },
-
-    _insanityCheck : function (element, meta, type) {
-        $assert(meta === null, "js.dom.template.OperatorsList#_insanityCheck", "Invalid operators list on element |%s|. Only one %s operator is allowed.", element, js.dom.template.Opcode.Type.name(type));
-    },
-
-    toString : function () {
-        return "js.dom.template.OperatorsList";
-    }
+	toString : function() {
+		return "js.dom.template.OperatorsList";
+	}
 };
 $extends(js.dom.template.OperatorsList, Object);
 
-js.dom.template.OperatorsList.Meta = function () {
-    this.opcode = null;
+js.dom.template.OperatorsList.Meta = function() {
+	this.opcode = null;
 
-    this.operand = null;
+	this.operand = null;
 };
 $extends(js.dom.template.OperatorsList.Meta, Object);
 $package("js.dom.template");
@@ -7283,7 +7258,11 @@ js.dom.template.Template.prototype = {
 	injectElement : function(element, value) {
 		$assert(element, "js.dom.template.Template#injectElement", "Element is undefined or null.");
 		$assert(js.lang.Types.isElement(element), "js.dom.template.Template#injectElement", "Element is not of proper type.");
-		$assert(value, "js.dom.template.Template#injectElement", "Value is undefined or null.");
+		$assert(typeof value !== "undefined", "js.dom.template.Template#injectElement", "Value argument is undefined.");
+		if (value == null) {
+			this.reset(element);
+			return;
+		}
 		var content = this._init(value);
 		this._operators.initSubtree(element);
 		this._inject(element, content.getModel());
@@ -7534,8 +7513,8 @@ js.event.DomEvents.prototype = {
     addListener : function (type, listener, scope, capture) {
         $assert(type in js.event.Types, "js.event.DomEvents#addListener", "Unrecognized event type #%s.", type);
         $assert(js.lang.Types.isFunction(listener), "js.event.DomEvents#addListener", "Event listener is not a function.");
-        $assert(js.lang.Types.isObject(scope), "js.event.DomEvents#addListener", "Scope is not an object.");
-        $assert(js.lang.Types.isBoolean(capture), "js.event.DomEvents#addListener", "Capture flag is not a boolean value.");
+        $assert(typeof scope === "undefined" || js.lang.Types.isObject(scope), "js.event.DomEvents#addListener", "Scope is not an object.");
+        $assert(typeof scope === "undefined" || js.lang.Types.isBoolean(capture), "js.event.DomEvents#addListener", "Capture flag is not a boolean value.");
         if (!(type in js.event.Types)) {
             return;
         }

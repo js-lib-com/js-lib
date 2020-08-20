@@ -80,31 +80,6 @@ js.dom.Control.prototype = {
 	CSS_INVALID : "invalid",
 
 	/**
-	 * Get this control name - both standard and user defined controls are supported. This getter supports both standard
-	 * controls using <code>name</code> attribute or user defined controls that use <code>data-name</code>, in this
-	 * order.
-	 * <p>
-	 * It is not legal to have both <code>name</code> and <code>data-name</code> attributes or neither; assertion is
-	 * thrown. If assertions are disabled returns null if none or value of <code>name</code> attribute if both are
-	 * present.
-	 * 
-	 * @return String this control name.
-	 * @assert this control has not both <code>name</code> and <code>data-name</code> attributes but still has one
-	 * of them.
-	 */
-	getName : function() {
-		var name = this.getAttr("name");
-		if (name === null) {
-			name = this.getAttr("data-name");
-		}
-		else {
-			$assert(!this._node.hasAttribute("data-name"), "js.dom.Control#getName", "Both <name> and <data-name> attributes present on control |%s|.", this);
-		}
-		$assert(name !== null, "js.dom.Control#getName", "Control |%s| has no name.", this);
-		return name;
-	},
-
-	/**
 	 * Set this control formatted value. If this control has a format class uses it to convert given value into a string
 	 * suitable for user interface. If has multiple values - as returned by {@link isMultiple()}, <code>value</code>
 	 * argument should be an array; concatenates all array items using comma as separator applying formatter, if
@@ -130,7 +105,7 @@ js.dom.Control.prototype = {
 			return this;
 		}
 
-		$assert(this.getAttr("type") === "hidden" || this.style.get("display") !== "none", "js.dom.Control#setValue", "Display is none.");
+		$assert(this.getAttr("type") === "hidden" || this.style.get("display") !== "none", "js.dom.Control#setValue", "Control |%s| has display none.", this);
 		if (value === null) {
 			return this._clean();
 		}

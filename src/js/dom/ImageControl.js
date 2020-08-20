@@ -23,6 +23,20 @@ js.dom.ImageControl = function(ownerDoc, node) {
 
 js.dom.ImageControl.prototype = {
 	/**
+	 * Mark CSS class to identify optional control.
+	 * 
+	 * @type String
+	 */
+	CSS_OPTIONAL : "optional",
+
+	/**
+	 * Mark CSS class to identify invalid control.
+	 * 
+	 * @type String
+	 */
+	CSS_INVALID : "invalid",
+
+	/**
 	 * Set this image control source. This setter delegates {@link js.dom.Image#setSrc(String)} but takes care to add
 	 * random value to source URL, to deal with caches. If image source argument is null delegates {@link #reset()}
 	 * method.

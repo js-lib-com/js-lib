@@ -93,8 +93,9 @@ js.dom.template.ListOperator.prototype = {
 		return undefined;
 	},
 
-	_reset : function() {
+	_reset : function(element) {
 		// take care to initialize item template in case is not already initialized
+		// ignore returned value for next statement; it initializes element user data as side effect
 		this._getItemTemplate(element);
 		element.removeChildren();
 	},

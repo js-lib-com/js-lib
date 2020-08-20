@@ -71,8 +71,8 @@ js.event.DomEvents.prototype = {
     addListener : function (type, listener, scope, capture) {
         $assert(type in js.event.Types, "js.event.DomEvents#addListener", "Unrecognized event type #%s.", type);
         $assert(js.lang.Types.isFunction(listener), "js.event.DomEvents#addListener", "Event listener is not a function.");
-        $assert(js.lang.Types.isObject(scope), "js.event.DomEvents#addListener", "Scope is not an object.");
-        $assert(js.lang.Types.isBoolean(capture), "js.event.DomEvents#addListener", "Capture flag is not a boolean value.");
+        $assert(typeof scope === "undefined" || js.lang.Types.isObject(scope), "js.event.DomEvents#addListener", "Scope is not an object.");
+        $assert(typeof scope === "undefined" || js.lang.Types.isBoolean(capture), "js.event.DomEvents#addListener", "Capture flag is not a boolean value.");
         if (!(type in js.event.Types)) {
             return;
         }

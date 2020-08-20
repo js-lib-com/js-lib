@@ -699,9 +699,13 @@ js.dom.Element.prototype = {
 	},
 
 	/**
-	 * Get this element name or null if name attribute not set. This getter supports both standard <code>name</code>
+	 * Get this element name or null if name is missing. This getter supports both standard <code>name</code>
+	 * attribute or user defined <code>data-name</code>, in this order.
+	 * <p>
+	 * It is not legal to have both <code>name</code> and <code>data-name</code> attributes; assertion is thrown.
 	 * 
-	 * @return String this control name, possible null.
+	 * @return String this element name or null.
+	 * @assert this element has not both <code>name</code> and <code>data-name</code> attributes.
 	 */
 	getName : function() {
 		var name = this.getAttr("name");
@@ -981,7 +985,7 @@ js.dom.Element.prototype = {
 	 * @assert <code>cssClass</code> argument is not undefined, null or empty.
 	 */
 	hasCssClass : function(cssClass) {
-		$assert(cssClass, "js.dom.Element#hasCssClass", "CSS class is undefined, null or empty.");
+		$assert(cssClass, "js.dom.Element#hasCssClass", "CSS class argument is undefined, null or empty.");
 		if (!cssClass) {
 			return false;
 		}
@@ -1084,12 +1088,9 @@ js.dom.Element.prototype = {
 	 * @param Object value non primitive value, be it {@link Object} or {@link Array}.
 	 * @return js.dom.Element this object.
 	 * @assert this method is not called by subclass via $super.
-	 * @assert given argument is not primitive value and this element has children.
 	 */
 	setObject : function(value) {
 		$assert(!arguments.callee.__super_call__, "js.dom.Element#setObject", "$super call on setObject from subclass is not allowed! It creates circular dependencies.");
-		$assert(!js.lang.Types.isPrimitive(value), "js.dom.Element#setObject", "Primitive value not supported.");
-		$assert(js.lang.Types.isArray(value) || this.hasChildren(), "js.dom.Element#setObject", "Unsupported state: this element has no child.");
 		this._ownerDoc._template.injectElement(this, value);
 		return this;
 	},
@@ -1109,7 +1110,12 @@ js.dom.Element.prototype = {
 
 		var element = templateElement.clone(true);
 		element.setUserData("value", value);
-		element.setObject(value);
+		if (value != null) {
+			element.setObject(value);
+		}
+		else {
+			element.resetObject();
+		}
 		this.addChild(element);
 		return this;
 	},
@@ -1657,7 +1663,7 @@ $legacy(js.ua.Engine.TRIDENT || js.ua.Engine.MOBILE_WEBKIT, function() {
 	};
 
 	js.dom.Element.prototype.hasCssClass = function(cssClass) {
-		$assert(cssClass, "js.dom.Element#hasCssClass", "CSS class is undefined, null or empty.");
+		$assert(cssClass, "js.dom.Element#hasCssClass", "CSS class argument is undefined, null or empty.");
 		if (!cssClass) {
 			return false;
 		}
