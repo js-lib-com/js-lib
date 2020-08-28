@@ -671,6 +671,9 @@ js.dom.Document.prototype = {
             return "js.dom.Button";
 
         case "select":
+        	if(node.hasAttribute("multiple")) {
+        		return "js.dom.MultipleSelect";
+        	}
             return "js.dom.Select";
 
         case "option":

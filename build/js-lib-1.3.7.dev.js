@@ -2081,7 +2081,7 @@ js.dom.Element = function(ownerDoc, node) {
 	$assert(this._format === null || js.lang.Types.isObject(this._format), "js.dom.Element#Element", "Formatter is not an object.");
 
 	this._config = {};
-	dataCfg = this.getAttr("data-cfg");
+	dataCfg = this.getAttr("data-cfg") || this.getAttr("data-config");
 	if (dataCfg !== null) {
 		pairs = js.util.Strings.parseNameValues(dataCfg);
 		for (i = 0; i < pairs.length; i++) {
@@ -2097,7 +2097,6 @@ js.dom.Element = function(ownerDoc, node) {
 			}
 			this._config[js.util.Strings.toScriptCase(pairs[i].name)] = value;
 		}
-		this.removeAttr("data-cfg");
 	}
 
 	this._domEvents = new js.event.DomEvents(this);
@@ -2743,10 +2742,45 @@ js.dom.Element.prototype = {
 		return data;
 	},
 
-	getListData : function() {
-		return this.getChildren().map(function(child) {
+	getListData : function(options) {
+		$assert(typeof options === "undefined" || options != null, "js.dom.Element#getListData", "Null options not supported.");
+
+		if (typeof options === "function") {
+			var values = [];
+			this.getChildren().forEach(function(child) {
+				var value = options(child.getUserData());
+				if (typeof value !== "undefined") {
+					values.push(value);
+				}
+			})
+			return values;
+		}
+
+		var children = null;
+		if (typeof options === "undefined") {
+			children = this.getChildren();
+		}
+		else {
+			if (typeof options.tag !== "undefined") {
+				children = this.findByCss(":scope > " + options.tag);
+			}
+			else if (typeof options.css !== "undefined") {
+				children = this.findByCss(":scope > " + options.css);
+			}
+			else if (typeof options.cssClass !== "undefined") {
+				children = this.findByCss(":scope > ." + options.cssClass);
+			}
+			else if (typeof options.clazz !== "undefined") {
+				children = this.findByCss(":scope > [data-class='" + options.clazz.toString() + "']");
+			}
+			else if (typeof options.className !== "undefined") {
+				children = this.findByCss(":scope > [data-class='" + options.className + "']");
+			}
+		}
+
+		return children != null ? children.map(function(child) {
 			return child.getUserData();
-		});
+		}) : null;
 	},
 
 	bind : function(selectors, typeName) {
@@ -3779,6 +3813,9 @@ js.dom.Document.prototype = {
             return "js.dom.Button";
 
         case "select":
+        	if(node.hasAttribute("multiple")) {
+        		return "js.dom.MultipleSelect";
+        	}
             return "js.dom.Select";
 
         case "option":
@@ -4602,6 +4639,213 @@ $extends(js.dom.ImageControl, js.dom.Image);
 $implements(js.dom.Control, js.dom.ControlInterface);
 $package("js.dom");
 
+js.dom.Select = function(ownerDoc, node) {
+	$assert(this instanceof js.dom.Select, "js.dom.Select#Select", "Invoked as function.");
+	this.$super(ownerDoc, node);
+	$assert(node.nodeName.toLowerCase() === "select", "js.dom.Select#Select", "Node is not a select.");
+
+	this._dataMap = {};
+
+	this._events = this.getCustomEvents();
+	this._events.register("updated");
+
+	var restPath = this.getAttr("data-load");
+	if (restPath !== null) {
+		$rest(restPath, this.setOptions, this);
+	}
+
+	this.on("change", this._onChange, this);
+};
+
+js.dom.Select.prototype = {
+	_DEF_OPTION_CSS : "default-option",
+
+	load : function(remoteClassStub, remoteMethod) {
+		var args = $args(arguments, 2);
+		args.push(this.setOptions); // callback
+		args.push(this); // callback scope
+		remoteClassStub[remoteMethod].apply(remoteClassStub, args);
+		return this;
+	},
+
+	setOptions : function(items) {
+		this.clearOptions();
+
+		for (var i = 0, item, option; i < items.length; i++) {
+			item = items[i];
+			option = this._ownerDoc._document.createElement("option");
+
+			if (js.lang.Types.isString(item)) {
+				option.text = item;
+			}
+			else if (typeof item.id !== "undefined") {
+				$assert(typeof item.name !== "undefined", "js.dom.Select#_onLoad", "Item name is undefined.");
+				option.text = item.name;
+				option.value = item.id.toString();
+				this._dataMap[option.value] = item;
+			}
+			else {
+				$assert(typeof item.text !== "undefined", "js.dom.Select#_onLoad", "Item text is undefined.");
+				option.text = item.text;
+				option.value = typeof item.value !== "undefined" ? item.value : item.text;
+			}
+			this._node.add(option, null);
+		}
+
+		this._events.fire("updated", this._getOption());
+		return this;
+	},
+
+	clearOptions : function() {
+		var child = this.getFirstChild(), nextSibling;
+		while (child !== null) {
+			nextSibling = child.getNextSibling();
+			if (!child.hasCssClass(this._DEF_OPTION_CSS)) {
+				child.remove();
+			}
+			child = nextSibling;
+		}
+
+		this._dataMap = {};
+		this.removeCssClass(this.CSS_INVALID);
+	},
+
+	setValue : function(value) {
+		var i, opts, l;
+		
+		value = String(value);
+		this._node.selectedIndex = 0;
+		for (i = 0, opts = this._node.options, l = opts.length; i < l; i++) {
+			if (opts[i].value == value || opts[i].text == value) {
+				this._node.selectedIndex = i;
+				this.removeCssClass(this.CSS_INVALID);
+				break;
+			}
+		}
+		return this;
+	},
+
+	reset : function() {
+		this.removeCssClass(this.CSS_INVALID);
+		this._node.selectedIndex = 0;
+		return this;
+	},
+
+	getValue : function() {
+		return this._getOption().value;
+	},
+
+	getText : function() {
+		return this._getOption().text;
+	},
+
+	getObject : function() {
+		return this._getOption().data;
+	},
+
+	isEmpty : function() {
+		return this.getIndex() === -1;
+	},
+
+	isValid : function() {
+		var value = this.getValue();
+		var valid = this.hasCssClass(this.CSS_OPTIONAL) || (value !== null && value !== "");
+		this.addCssClass(this.CSS_INVALID, !valid);
+		return valid;
+	},
+
+	getIndex : function() {
+		return this._node.selectedIndex;
+	},
+
+	equals : function(value) {
+		return this._getOption().value == value;
+	},
+
+	_onChange : function(ev) {
+		this._events.fire("updated", this._getOption());
+	},
+
+	_getOption : function() {
+		var idx, option;
+
+		// if this select is empty returns null option
+		if (this._node.options.length === 0) {
+			return {
+				value : null,
+				text : null,
+				data : null
+			};
+		}
+
+		idx = this._node.selectedIndex;
+		// if no selection made consider the first option
+		if (idx === -1) {
+			idx = 0;
+		}
+		option = this._node.options[idx];
+		return {
+			value : option.value,
+			text : option.text,
+			data : this._dataMap[option.value]
+		};
+	},
+
+	toString : function() {
+		return "js.dom.Select";
+	}
+};
+$extends(js.dom.Select, js.dom.Control);
+$package("js.dom");
+
+js.dom.MultipleSelect = function(ownerDoc, node) {
+	$assert(this instanceof js.dom.MultipleSelect, "js.dom.MultipleSelect#MutipleSelect", "Invoked as function.");
+	this.$super(ownerDoc, node);
+};
+
+js.dom.MultipleSelect.prototype = {
+	setValue : function(values) {
+		var options = this._node.options;
+		for (var i = 0; i < options.length; i++) {
+		    options[i].selected = values.indexOf(options[i].value) >= 0;
+		}
+	},
+
+	getValue : function() {
+		return this._getOptions().map(function(option) {
+			return option.value;
+		});
+	},
+
+	getObject : function() {
+		return this._getOptions().map(function(option) {
+			return option.data;
+		});
+	},
+
+	_getOptions : function() {
+		var idx, option, options = [];
+
+		for (idx = 0; idx < this._node.options.length; ++idx) {
+			option = this._node.options[idx];
+			if (option.selected) {
+				options.push({
+					value : option.value,
+					text : option.text,
+					data : this._dataMap[option.value]
+				});
+			}
+		}
+		return options;
+	},
+
+	toString : function() {
+		return "js.dom.MultipleSelect";
+	}
+};
+$extends(js.dom.MultipleSelect, js.dom.Select);
+$package("js.dom");
+
 js.dom.Node = {
 	_BACK_REF : "__js_element__",
 
@@ -5014,165 +5258,6 @@ js.dom.Radio.prototype = {
 	}
 };
 $extends(js.dom.Radio, js.dom.Checkbox);
-$package("js.dom");
-
-js.dom.Select = function(ownerDoc, node) {
-	$assert(this instanceof js.dom.Select, "js.dom.Select#Select", "Invoked as function.");
-	this.$super(ownerDoc, node);
-	$assert(node.nodeName.toLowerCase() === "select", "js.dom.Select#Select", "Node is not a select.");
-
-	this._dataMap = {};
-
-	this._events = this.getCustomEvents();
-	this._events.register("updated");
-
-	var restPath = this.getAttr("data-load");
-	if (restPath !== null) {
-		$rest(restPath, this.setOptions, this);
-	}
-
-	this.on("change", this._onChange, this);
-};
-
-js.dom.Select.prototype = {
-	_DEF_OPTION_CSS : "default-option",
-
-	load : function(remoteClassStub, remoteMethod) {
-		var args = $args(arguments, 2);
-		args.push(this.setOptions); // callback
-		args.push(this); // callback scope
-		remoteClassStub[remoteMethod].apply(remoteClassStub, args);
-		return this;
-	},
-
-	setOptions : function(items) {
-		this.clearOptions();
-
-		for (var i = 0, item, option; i < items.length; i++) {
-			item = items[i];
-			option = this._ownerDoc._document.createElement("option");
-
-			if (js.lang.Types.isString(item)) {
-				option.text = item;
-			}
-			else if (typeof item.id !== "undefined") {
-				$assert(typeof item.name !== "undefined", "js.dom.Select#_onLoad", "Item name is undefined.");
-				option.text = item.name;
-				option.value = item.id.toString();
-				this._dataMap[option.value] = item;
-			}
-			else {
-				$assert(typeof item.text !== "undefined", "js.dom.Select#_onLoad", "Item text is undefined.");
-				option.text = item.text;
-				option.value = typeof item.value !== "undefined" ? item.value : item.text;
-			}
-			this._node.add(option, null);
-		}
-
-		this._events.fire("updated", this._getOption());
-		return this;
-	},
-
-	clearOptions : function() {
-		var child = this.getFirstChild(), nextSibling;
-		while (child !== null) {
-			nextSibling = child.getNextSibling();
-			if (!child.hasCssClass(this._DEF_OPTION_CSS)) {
-				child.remove();
-			}
-			child = nextSibling;
-		}
-
-		this._dataMap = {};
-		this.removeCssClass(this.CSS_INVALID);
-	},
-
-	setValue : function(value) {
-		var i, opts, l;
-		
-		value = String(value);
-		this._node.selectedIndex = 0;
-		for (i = 0, opts = this._node.options, l = opts.length; i < l; i++) {
-			if (opts[i].value == value || opts[i].text == value) {
-				this._node.selectedIndex = i;
-				this.removeCssClass(this.CSS_INVALID);
-				break;
-			}
-		}
-		return this;
-	},
-
-	reset : function() {
-		this.removeCssClass(this.CSS_INVALID);
-		this._node.selectedIndex = 0;
-		return this;
-	},
-
-	getValue : function() {
-		return this._getOption().value;
-	},
-
-	getText : function() {
-		return this._getOption().text;
-	},
-
-	getObject : function() {
-		return this._getOption().data;
-	},
-
-	isEmpty : function() {
-		return this.getIndex() === -1;
-	},
-
-	isValid : function() {
-		var value = this.getValue();
-		var valid = this.hasCssClass(this.CSS_OPTIONAL) || (value !== null && value !== "");
-		this.addCssClass(this.CSS_INVALID, !valid);
-		return valid;
-	},
-
-	getIndex : function() {
-		return this._node.selectedIndex;
-	},
-
-	equals : function(value) {
-		return this._getOption().value == value;
-	},
-
-	_onChange : function(ev) {
-		this._events.fire("updated", this._getOption());
-	},
-
-	_getOption : function() {
-		var idx, option;
-
-		// if this select is empty returns null option
-		if (this._node.options.length === 0) {
-			return {
-				value : null,
-				text : null,
-				data : null
-			};
-		}
-
-		idx = this._node.selectedIndex;
-		// if no selection made consider the first option
-		if (idx === -1) {
-			idx = 0;
-		}
-		option = this._node.options[idx];
-		return {
-			value : option.value,
-			text : option.text,
-			data : this._dataMap[option.value]
-		};
-	},
-
-	toString : function() {
-		return "js.dom.Select";
-	}
-};
-$extends(js.dom.Select, js.dom.Control);
 $package("js.dom");
 
 js.dom.Style = function (el) {

@@ -95,7 +95,7 @@ js.dom.Element = function(ownerDoc, node) {
 	 * @type Object
 	 */
 	this._config = {};
-	dataCfg = this.getAttr("data-cfg");
+	dataCfg = this.getAttr("data-config") || this.getAttr("data-cfg");
 	if (dataCfg !== null) {
 		pairs = js.util.Strings.parseNameValues(dataCfg);
 		for (i = 0; i < pairs.length; i++) {
@@ -111,7 +111,6 @@ js.dom.Element = function(ownerDoc, node) {
 			}
 			this._config[js.util.Strings.toScriptCase(pairs[i].name)] = value;
 		}
-		this.removeAttr("data-cfg");
 	}
 
 	/**
@@ -1328,12 +1327,49 @@ js.dom.Element.prototype = {
 	 * Collect user data from all children and return the array. Returned array may contain null items for children
 	 * without user data. Returned array has the length equal to children count even if all items are null.
 	 * 
+	 * @param Object optional invocation options, can be undefined but null is not accepted.
 	 * @return Array children user data, possible with null items.
+	 * @assert options argument is not null.
 	 */
-	getListData : function() {
-		return this.getChildren().map(function(child) {
+	getListData : function(options) {
+		$assert(typeof options === "undefined" || options != null, "js.dom.Element#getListData", "Null options not supported.");
+
+		if (typeof options === "function") {
+			var values = [];
+			this.getChildren().forEach(function(child) {
+				var value = options(child.getUserData());
+				if (typeof value !== "undefined") {
+					values.push(value);
+				}
+			})
+			return values;
+		}
+
+		var children = null;
+		if (typeof options === "undefined") {
+			children = this.getChildren();
+		}
+		else {
+			if (typeof options.tag !== "undefined") {
+				children = this.findByCss(":scope > " + options.tag);
+			}
+			else if (typeof options.css !== "undefined") {
+				children = this.findByCss(":scope > " + options.css);
+			}
+			else if (typeof options.cssClass !== "undefined") {
+				children = this.findByCss(":scope > ." + options.cssClass);
+			}
+			else if (typeof options.clazz !== "undefined") {
+				children = this.findByCss(":scope > [data-class='" + options.clazz.toString() + "']");
+			}
+			else if (typeof options.className !== "undefined") {
+				children = this.findByCss(":scope > [data-class='" + options.className + "']");
+			}
+		}
+
+		return children != null ? children.map(function(child) {
 			return child.getUserData();
-		});
+		}) : null;
 	},
 
 	/**
