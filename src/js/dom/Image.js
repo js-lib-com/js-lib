@@ -66,6 +66,11 @@ js.dom.Image.prototype = {
 		if (!src || /^\s+|(?:&nbsp;)+$/g.test(src)) {
 			return this.reset();
 		}
+		if (this._isBLOB(src)) {
+			// if is a BLOB from a file reader do not pre-process in any way; just pass it to the browser
+			this._node.src = src;
+			return this;
+		}
 
 		if (this._format !== null) {
 			src = this._format.format(src);
@@ -135,6 +140,10 @@ js.dom.Image.prototype = {
 	reload : function(src) {
 		if (!src) {
 			src = this._node.src;
+		}
+		if (this._isBLOB(src)) {
+			this._node.src = src;
+			return this;
 		}
 		$assert(src, "js.dom.Image#reload", "Image source is undefined, null or empty.");
 		var random = Math.random().toString(36).substr(2);
@@ -209,6 +218,10 @@ js.dom.Image.prototype = {
 			this._node.src = this._defaultSrc;
 		}
 		this._error = true;
+	},
+
+	_isBLOB : function(src) {
+		return src.startsWith("data:image");
 	},
 
 	/**

@@ -48,6 +48,10 @@ js.dom.ImageControl.prototype = {
 		if (!src) {
 			return this.reset();
 		}
+		if (this._isBLOB(src)) {
+			this._node.src = src;
+			return this;
+		}
 		this._error = false;
 		var random = Math.random().toString(36).substr(2);
 		var i = src.indexOf('?');

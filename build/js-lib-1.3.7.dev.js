@@ -2081,7 +2081,7 @@ js.dom.Element = function(ownerDoc, node) {
 	$assert(this._format === null || js.lang.Types.isObject(this._format), "js.dom.Element#Element", "Formatter is not an object.");
 
 	this._config = {};
-	dataCfg = this.getAttr("data-cfg") || this.getAttr("data-config");
+	dataCfg = this.getAttr("data-config") || this.getAttr("data-cfg");
 	if (dataCfg !== null) {
 		pairs = js.util.Strings.parseNameValues(dataCfg);
 		for (i = 0; i < pairs.length; i++) {
@@ -4449,6 +4449,11 @@ js.dom.Image.prototype = {
 		if (!src || /^\s+|(?:&nbsp;)+$/g.test(src)) {
 			return this.reset();
 		}
+		if (this._isBLOB(src)) {
+			// if is a BLOB from a file reader do not pre-process in any way; just pass it to the browser
+			this._node.src = src;
+			return this;
+		}
 
 		if (this._format !== null) {
 			src = this._format.format(src);
@@ -4499,6 +4504,10 @@ js.dom.Image.prototype = {
 		if (!src) {
 			src = this._node.src;
 		}
+		if (this._isBLOB(src)) {
+			this._node.src = src;
+			return this;
+		}
 		$assert(src, "js.dom.Image#reload", "Image source is undefined, null or empty.");
 		var random = Math.random().toString(36).substr(2);
 		var i = src.indexOf('?');
@@ -4538,6 +4547,10 @@ js.dom.Image.prototype = {
 		this._error = true;
 	},
 
+	_isBLOB : function(src) {
+		return src.startsWith("data:image");
+	},
+
 	toString : function() {
 		return 'js.dom.Image';
 	}
@@ -4559,6 +4572,10 @@ js.dom.ImageControl.prototype = {
 	setValue : function(src) {
 		if (!src) {
 			return this.reset();
+		}
+		if (this._isBLOB(src)) {
+			this._node.src = src;
+			return this;
 		}
 		this._error = false;
 		var random = Math.random().toString(36).substr(2);
@@ -7821,6 +7838,24 @@ js.event.Event.prototype = {
 			return value ? value : null;
 		}
 		return undefined;
+	},
+
+	clipboardData : function(mediaType) {
+		if (typeof this._domEvent.clipboardData === "undefined") {
+			return undefined;
+		}
+		if (mediaType.startsWith("text")) {
+			var value = this._domEvent.clipboardData.getData(mediaType);
+			return value ? value : null;
+		}
+
+		var items = this._domEvent.clipboardData.items;
+		for (var i = 0; i < items.length; ++i) {
+			if (items[i].type.startsWith(mediaType)) {
+				return items[i].getAsFile();
+			}
+		}
+		return null;
 	},
 
 	toString : function() {
