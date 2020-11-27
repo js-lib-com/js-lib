@@ -244,6 +244,24 @@ js.event.Event.prototype = {
 		return undefined;
 	},
 
+	clipboardData : function(mediaType) {
+		if (typeof this._domEvent.clipboardData === "undefined") {
+			return undefined;
+		}
+		if (mediaType.startsWith("text")) {
+			var value = this._domEvent.clipboardData.getData(mediaType);
+			return value ? value : null;
+		}
+
+		var items = this._domEvent.clipboardData.items;
+		for (var i = 0; i < items.length; ++i) {
+			if (items[i].type.startsWith(mediaType)) {
+				return items[i].getAsFile();
+			}
+		}
+		return null;
+	},
+
 	/**
 	 * Returns a string representation of the object.
 	 * 
