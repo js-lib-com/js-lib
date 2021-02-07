@@ -17,7 +17,6 @@ $package('js.dom');
 js.dom.Anchor = function(ownerDoc, node) {
 	$assert(this instanceof js.dom.Anchor, 'js.dom.Anchor#Anchor', 'Invoked as function.');
 	this.$super(ownerDoc, node);
-	$assert(node.nodeName.toLowerCase() === 'a', 'js.dom.Anchor#Anchor', 'Node is not an anchor.');
 };
 
 js.dom.Anchor.prototype = {

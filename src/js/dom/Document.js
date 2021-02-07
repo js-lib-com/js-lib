@@ -19,7 +19,7 @@ $package("js.dom");
  * 
  * @param Document document native document.
  */
-js.dom.Document = function (document) {
+js.dom.Document = function(document) {
     $assert(this instanceof js.dom.Document, "js.dom.Document#Document", "Invoked as function.");
     $assert(document, "js.dom.Document#Document", "Undefined or null native document.");
     $assert(document.nodeType === Node.DOCUMENT_NODE, "js.dom.Document#Document", "Invalid document type #%d", document.nodeType);
@@ -44,6 +44,8 @@ js.dom.Document = function (document) {
      * @type js.event.DomEvents
      */
     this._domEvents = new js.event.DomEvents(this);
+
+    this._customElements = {};
 };
 
 js.dom.Document.prototype = {
@@ -52,7 +54,7 @@ js.dom.Document.prototype = {
      * 
      * @return Document wrapped native document.
      */
-    getDocument : function () {
+    getDocument : function() {
         return this._document;
     },
 
@@ -61,7 +63,7 @@ js.dom.Document.prototype = {
      * 
      * @return Boolean true if this document instance is XML.
      */
-    isXML : function () {
+    isXML : function() {
         return false;
     },
 
@@ -91,10 +93,10 @@ js.dom.Document.prototype = {
      * @param String... attrNameValuePairs optional pairs of attribute name followed by value.
      * @return js.dom.Element newly created element.
      * @assert <em>tag</em> argument is not undefined, null or empty and the number of <em>attrNameValuePairs</em>
-     *         arguments is even.
+     * arguments is even.
      * @see js.dom.Element#setAttr
      */
-    createElement : function (tag) {
+    createElement : function(tag) {
         $assert(tag, "js.dom.Document#createElement", "Undefined, null or empty tag name.");
         $assert(arguments.length % 2 === 1, "js.dom.Document#createElement", "Invalid attributes name/value.");
         if (!tag) {
@@ -117,7 +119,7 @@ js.dom.Document.prototype = {
      * @param String className full qualified name for class.
      * @return js.dom.Element newly created element.
      */
-    createElementForClass : function (tag, className) {
+    createElementForClass : function(tag, className) {
         $assert(tag, "js.dom.Document#createElementForClass", "Undefined, null or empty tag name.");
         $assert(className, "js.dom.Document#createElementForClass", "Undefined, null or empty class name.");
         if (!tag || !className) {
@@ -145,7 +147,7 @@ js.dom.Document.prototype = {
      * @return js.dom.Element newly imported element.
      * @assert element to be imported is not undefined or null and does not already belong to this document.
      */
-    importElement : function (el) {
+    importElement : function(el) {
         $assert(el, "js.dom.Document#importElement", "Undefined or null foreign element.");
         if (!el) {
             return null;
@@ -165,7 +167,7 @@ js.dom.Document.prototype = {
      * @param Node node foreign node.
      * @return Node this document node created from given foreign node.
      */
-    _importNode : function (node) {
+    _importNode : function(node) {
         return this._document.importNode(node, true);
     },
 
@@ -174,7 +176,7 @@ js.dom.Document.prototype = {
      * 
      * @return js.dom.Element this document root.
      */
-    getRoot : function () {
+    getRoot : function() {
         return this.getElement(this._document.documentElement);
     },
 
@@ -188,7 +190,7 @@ js.dom.Document.prototype = {
      * @return js.dom.Element element with specified ID or null.
      * @assert <code>id</code> argument is not undefined, null or empty.
      */
-    getById : function (id) {
+    getById : function(id) {
         $assert(id, "js.dom.Document#getById", "ID is undefined or null.");
         var node = this._getNodeById(id);
         return node ? this.getElement(node) : null;
@@ -203,7 +205,7 @@ js.dom.Document.prototype = {
      * @param String id the ID of desired node.
      * @return Node node identified by given <code>ID</code>.
      */
-    _getNodeById : function (id) {
+    _getNodeById : function(id) {
         return this._document.getElementById(id);
     },
 
@@ -216,7 +218,7 @@ js.dom.Document.prototype = {
      * @return js.dom.Element found element or null.
      * @assert <code>clazz</code> argument is not undefined, null, is of proper type and requested class exists.
      */
-    getByClass : function (clazz) {
+    getByClass : function(clazz) {
         var node = js.dom.Node.getElementByClass(this._document, clazz);
         $assert(node !== null, "js.dom.Element#getByClass", "Class |%s| not found.", clazz);
         return this.getElement(node);
@@ -229,7 +231,7 @@ js.dom.Document.prototype = {
      * @return EList list of elements of requested class, possible empty.
      * @assert <code>clazz</code> argument is not undefined or null and is {@link Function} or {@link String}.
      */
-    findByClass : function (clazz) {
+    findByClass : function(clazz) {
         return this.getEList(js.dom.Node.getElementsByClass(this._document, clazz));
     },
 
@@ -246,7 +248,7 @@ js.dom.Document.prototype = {
      * @return js.dom.Element first element with specified tag or null.
      * @assert <em>tag</em> argument is not undefined, null or empty.
      */
-    getByTag : function (tag) {
+    getByTag : function(tag) {
         return this.getElement(js.dom.Node.getElementsByTagName(this._document, tag));
     },
 
@@ -263,7 +265,7 @@ js.dom.Document.prototype = {
      * @return js.dom.EList list of found elements, possible empty.
      * @assert <em>tag</em> argument is not undefined, null or empty.
      */
-    findByTag : function (tag) {
+    findByTag : function(tag) {
         return this.getEList(js.dom.Node.getElementsByTagName(this._document, tag));
     },
 
@@ -281,7 +283,7 @@ js.dom.Document.prototype = {
      * @assert <em>xpath</em> argument is not undefined, null or empty.
      * @note this method works only on XML documents.
      */
-    getByXPath : function (xpath) {
+    getByXPath : function(xpath) {
         $assert(xpath, "js.dom.Document#getByXPath", "XPath is undefined, null or empty.");
         return this.evaluateXPathNode(this._document, $format(arguments));
     },
@@ -300,7 +302,7 @@ js.dom.Document.prototype = {
      * @assert <em>xpath</em> argument is not undefined, null or empty.
      * @note this method works only on XML documents.
      */
-    findByXPath : function (xpath) {
+    findByXPath : function(xpath) {
         $assert(xpath, "js.dom.Document#findByXPath", "XPath is undefined, null or empty.");
         return this.evaluateXPathNodeList(this._document, $format(arguments));
     },
@@ -320,7 +322,7 @@ js.dom.Document.prototype = {
      * @return js.dom.Element first found element or null.
      * @assert <em>selectors</em> argument is not undefined, null or empty.
      */
-    getByCss : function (selectors) {
+    getByCss : function(selectors) {
         if (arguments.length > 1) {
             selectors = $format(arguments);
         }
@@ -342,7 +344,7 @@ js.dom.Document.prototype = {
      * @return js.dom.EList list of found elements, possible empty.
      * @assert <em>selectors</em> argument is not undefined, null or empty.
      */
-    findByCss : function (selectors) {
+    findByCss : function(selectors) {
         if (arguments.length > 1) {
             selectors = $format(arguments);
         }
@@ -357,7 +359,7 @@ js.dom.Document.prototype = {
      * @return js.dom.Element found element or null.
      * @assert <em>cssClass</em> argument is not undefined, null or empty.
      */
-    getByCssClass : function (cssClass) {
+    getByCssClass : function(cssClass) {
         return this.getElement(js.dom.Node.getElementsByClassName(this._document, cssClass));
     },
 
@@ -369,7 +371,7 @@ js.dom.Document.prototype = {
      * @return js.dom.EList list of found elements, possible empty.
      * @assert <em>cssClass</em> argument is not undefined, null or empty.
      */
-    findByCssClass : function (cssClass) {
+    findByCssClass : function(cssClass) {
         return this.getEList(js.dom.Node.getElementsByClassName(this._document, cssClass));
     },
 
@@ -381,7 +383,7 @@ js.dom.Document.prototype = {
      * @return js.dom.Element found element or null.
      * @assert <code>name</code> argument is not undefined, null or empty.
      */
-    getByName : function (name) {
+    getByName : function(name) {
         $assert(name, "js.dom.Document#getByName", "Name is undefined, null or empty.");
         return this.getElement(js.dom.Node.querySelector(this._document, $format("[name='%s'],[data-name='%s']", name, name)));
     },
@@ -394,7 +396,7 @@ js.dom.Document.prototype = {
      * @return js.dom.EList list of found elements, possible empty.
      * @assert <code>name</code> argument is not undefined, null or empty.
      */
-    findByName : function (name) {
+    findByName : function(name) {
         $assert(name, "js.dom.Document#findByName", "Name is undefined, null or empty.");
         return this.getEList(js.dom.Node.querySelectorAll(this._document, $format("[name='%s'],[data-name='%s']", name, name)));
     },
@@ -405,7 +407,7 @@ js.dom.Document.prototype = {
      * @return String document tree string representation.
      * @throws js.dom.DomException if serialization is not possible due to missing browser support.
      */
-    serialize : function () {
+    serialize : function() {
         return new XMLSerializer().serializeToString(this._document);
     },
 
@@ -432,7 +434,7 @@ js.dom.Document.prototype = {
      * @return js.dom.Element the element described by XPath expression or null.
      * @note this method works only on XML documents.
      */
-    evaluateXPathNode : function (node, xpath) {
+    evaluateXPathNode : function(node, xpath) {
         if (!xpath) {
             return null;
         }
@@ -450,7 +452,7 @@ js.dom.Document.prototype = {
      * @return js.dom.EList the elements list described by XPath expression, possible empty.
      * @note this method works only on XML documents.
      */
-    evaluateXPathNodeList : function (node, xpath) {
+    evaluateXPathNodeList : function(node, xpath) {
         if (!xpath) {
             return this.getEList(null);
         }
@@ -473,10 +475,10 @@ js.dom.Document.prototype = {
      * @param Number type XPath result type.
      * @return Object evaluation result which can be {@link Node} or {@link NodeList}.
      * @assert this document is XML, document evaluate function exists, parameters are of right types and returned value
-     *         is valid.
+     * is valid.
      * @note this method works only on XML documents.
      */
-    _evaluate : function (node, xpath, type) {
+    _evaluate : function(node, xpath, type) {
         $assert(this.isXML(), "js.dom.Document#_evaluate", "XPath evaluation is working only on XML documents.");
 
         $assert(js.lang.Types.isFunction(this._document.evaluate), "js.dom.Document#_evaluate", "Missing XPath evaluation support.");
@@ -531,7 +533,7 @@ js.dom.Document.prototype = {
      * @assert see assertions enforced by {@link js.event.DomEvents#addListener(String, Function, Object, Boolean)}.
      * @see #_domEvents
      */
-    on : function (type, listener, scope, capture) {
+    on : function(type, listener, scope, capture) {
         if (js.event.EventsMap.handle(this, arguments)) {
             return this;
         }
@@ -552,12 +554,16 @@ js.dom.Document.prototype = {
      * @return js.dom.Document this object.
      * @assert see assertions enforced by {@link js.event.DomEvents#removeListener(String, Function, Boolean)}.
      */
-    un : function (type, listener, capture) {
+    un : function(type, listener, capture) {
         if (typeof capture === "undefined") {
             capture = false;
         }
         this._domEvents.removeListener(type, listener, capture);
         return this;
+    },
+
+    register : function(nodeName, clazz) {
+        this._customElements[nodeName.toLowerCase()] = clazz.prototype.toString();
     },
 
     /**
@@ -581,7 +587,7 @@ js.dom.Document.prototype = {
      * @param Node node native W3C DOM Node.
      * @return js.dom.Element element wrapping given node or null.
      */
-    getElement : function (node) {
+    getElement : function(node) {
         // undocumented feat: if argument is node list extract first node
         if (js.lang.Types.isNodeList(node)) {
             node = node.item(0);
@@ -596,7 +602,10 @@ js.dom.Document.prototype = {
 
         var className = js.dom.Node.getElementClassName(node);
         if (className === null) {
-            className = this._getStandardElementClassName(node);
+            className = this._getCustomElementClassName(node);
+            if (className === null) {
+                className = this._getStandardElementClassName(node);
+            }
         }
         $assert(js.lang.Types.isString(className), "js.dom.Document#getElement", "Class name |%s| is not a string.", className);
 
@@ -606,8 +615,8 @@ js.dom.Document.prototype = {
 
         // HACK if clazz is a native class accept it without performing sanity check
         // TODO update js.lang.Types.isElement to deal with native classes
-        if(/^(?:class|function (?:[A-Z]|_class))/.test(clazz)) {
-        	return new clazz(this, node);
+        if (/^(?:class|function (?:[A-Z]|_class))/.test(clazz)) {
+            return new clazz(this, node);
         }
 
         $assert(js.lang.Types.isElement(clazz), "js.dom.Document#getElement", "Element class |%s| must extend js.dom.Element.", className);
@@ -623,7 +632,7 @@ js.dom.Document.prototype = {
      * @return js.dom.EList newly created elist, possible empty.
      * @assert <em>nodeList</em> argument is not undefined or null.
      */
-    getEList : function (nodeList) {
+    getEList : function(nodeList) {
         $assert(nodeList, "js.dom.Document#getEList", "Node list is undefined or null.");
         if (!nodeList) {
             nodeList = new js.dom.NodeList();
@@ -638,7 +647,7 @@ js.dom.Document.prototype = {
      * @param Node node native DOM node.
      * @return String standard element class name suitable for given node.
      */
-    _getStandardElementClassName : function (node) {
+    _getStandardElementClassName : function(node) {
         switch (node.nodeName.toLowerCase()) {
         case "a":
             return "js.dom.Anchor";
@@ -671,9 +680,9 @@ js.dom.Document.prototype = {
             return "js.dom.Button";
 
         case "select":
-        	if(node.hasAttribute("multiple")) {
-        		return "js.dom.MultipleSelect";
-        	}
+            if (node.hasAttribute("multiple")) {
+                return "js.dom.MultipleSelect";
+            }
             return "js.dom.Select";
 
         case "option":
@@ -685,6 +694,11 @@ js.dom.Document.prototype = {
         default:
             return "js.dom.Element";
         }
+    },
+
+    _getCustomElementClassName : function(node) {
+        var className = this._customElements[node.nodeName.toLowerCase()];
+        return className ? className : null;
     },
 
     /**
@@ -699,7 +713,7 @@ js.dom.Document.prototype = {
      * @returns js.dom.Document this object.
      * @assert <code>selector</code> points to an existing element.
      */
-    inject : function (selector, value) {
+    inject : function(selector, value) {
         var el = this.getByCss(selector);
         $assert(el !== null, "js.dom.Document#inject", "Bad selector.");
         if (el !== null) {
@@ -716,7 +730,7 @@ js.dom.Document.prototype = {
      * @return Boolean true if given document equals this one.
      * @assert given argument is not undefined or null and is a Document.
      */
-    equals : function (doc) {
+    equals : function(doc) {
         $assert(doc, "js.dom.Document#equals", "Document is undefined or null.");
         $assert(doc instanceof js.dom.Document, "js.dom.Document#equals", "Bad argument type.");
         if (!(doc && doc instanceof js.dom.Document)) {
@@ -730,14 +744,14 @@ js.dom.Document.prototype = {
      * 
      * @return String object string representation.
      */
-    toString : function () {
+    toString : function() {
         return "js.dom.Document";
     }
 };
 $extends(js.dom.Document, Object);
 
-$legacy(js.ua.Engine.TRIDENT, function () {
-    js.dom.Document.prototype._evaluate = function (node, xpath, type) {
+$legacy(js.ua.Engine.TRIDENT, function() {
+    js.dom.Document.prototype._evaluate = function(node, xpath, type) {
         $assert(this.isXML(), "js.dom.Document#_evaluate", "XPath evaluation is working only on XML documents.");
 
         // select language compatibility; without it IE uses a private variant with couple differences
@@ -759,7 +773,7 @@ $legacy(js.ua.Engine.TRIDENT, function () {
         return nodeList;
     };
 
-    js.dom.Document.prototype._importNode = function (foreignNode) {
+    js.dom.Document.prototype._importNode = function(foreignNode) {
         switch (foreignNode.nodeType) {
         case Node.ELEMENT_NODE:
             var node = this._document.createElement(foreignNode.nodeName);
@@ -783,7 +797,7 @@ $legacy(js.ua.Engine.TRIDENT, function () {
         }
     };
 
-    js.dom.Document.prototype._getNodeById = function (id) {
+    js.dom.Document.prototype._getNodeById = function(id) {
         try {
             return this._document.getElementById(id);
         } catch (e) {
@@ -791,11 +805,11 @@ $legacy(js.ua.Engine.TRIDENT, function () {
         }
     };
 
-    js.dom.Document.prototype.isXML = function () {
+    js.dom.Document.prototype.isXML = function() {
         return typeof this._document.xml !== "undefined";
     };
 
-    js.dom.Document.prototype.serialize = function () {
+    js.dom.Document.prototype.serialize = function() {
         if (typeof this._document.xml !== "undefined") {
             return this._document.xml;
         }
@@ -809,20 +823,20 @@ $legacy(js.ua.Engine.TRIDENT, function () {
     };
 });
 
-$legacy(js.ua.Engine.WEBKIT || js.ua.Engine.MOBILE_WEBKIT, function () {
-    js.dom.Document.prototype.isXML = function () {
+$legacy(js.ua.Engine.WEBKIT || js.ua.Engine.MOBILE_WEBKIT, function() {
+    js.dom.Document.prototype.isXML = function() {
         return this._document.xmlVersion == true;
     };
 });
 
-$legacy(js.ua.Engine.GECKO, function () {
-    js.dom.Document.prototype.isXML = function () {
+$legacy(js.ua.Engine.GECKO, function() {
+    js.dom.Document.prototype.isXML = function() {
         return this._document.contentType.indexOf("xml") !== -1;
     };
 });
 
-$legacy(js.ua.Engine.PRESTO, function () {
-    js.dom.Document.prototype.isXML = function () {
+$legacy(js.ua.Engine.PRESTO, function() {
+    js.dom.Document.prototype.isXML = function() {
         return typeof XMLDocument !== "undefined" && this._document instanceof XMLDocument;
     };
 });

@@ -37,7 +37,6 @@ $package("js.dom");
 js.dom.Select = function(ownerDoc, node) {
 	$assert(this instanceof js.dom.Select, "js.dom.Select#Select", "Invoked as function.");
 	this.$super(ownerDoc, node);
-	$assert(node.nodeName.toLowerCase() === "select", "js.dom.Select#Select", "Node is not a select.");
 
 	/**
 	 * Object data map stores user defined object references associated with this select options. This map is

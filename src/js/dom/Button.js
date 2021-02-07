@@ -15,7 +15,6 @@ $package("js.dom");
 js.dom.Button = function (ownerDoc, node) {
     $assert(this instanceof js.dom.Button, "js.dom.Button#Button", "Invoked as function.");
     this.$super(ownerDoc, node);
-    $assert(node.nodeName.toLowerCase() === "button", "js.dom.Button#Button", "Node is not an input.");
 };
 
 js.dom.Button.prototype = {

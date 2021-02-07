@@ -13,7 +13,6 @@ $package("js.dom");
 js.dom.FileInput = function (ownerDoc, node) {
     $assert(this instanceof js.dom.FileInput, "js.dom.FileInput#FileInput", "Invoked as function.");
     this.$super(ownerDoc, node);
-    $assert(node.nodeName.toLowerCase() === "input", "js.dom.FileInput#FileInput", "Node is not an input.");
     $assert(node.getAttribute("type") === "file", "js.dom.FileInput#FileInput", "Node is not a file.");
 };
 

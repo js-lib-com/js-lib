@@ -15,7 +15,6 @@ $package('js.dom');
 js.dom.Radio = function(ownerDoc, node) {
 	$assert(this instanceof js.dom.Radio, 'js.dom.Radio#Radio', 'Invoked as function.');
 	this.$super(ownerDoc, node);
-	$assert(node.nodeName.toLowerCase() === 'input', 'js.dom.Radio#Radio', 'Node is not an input.');
 	$assert(node.getAttribute('type') === 'radio', 'js.dom.Radio#Radio', 'Node is not a checkbox.');
 };
 

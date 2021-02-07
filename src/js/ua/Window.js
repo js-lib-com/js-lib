@@ -404,7 +404,6 @@ js.ua.Window.prototype = {
 		});
 		if (typeof callback !== "undefined") {
 			$assert(js.lang.Types.isFunction(callback), "js.ua.Window.scrollTo", "Callback argument is not a function.");
-			$assert(js.lang.Types.isStrictObject(scope), "js.ua.Window.scrollTo", "Scope argument is not an object.");
 			anim.on("anim-stop", callback, scope || window);
 		}
 		anim.start();

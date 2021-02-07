@@ -17,7 +17,6 @@ $package('js.dom');
 js.dom.Image = function(ownerDoc, node) {
 	$assert(this instanceof js.dom.Image, 'js.dom.Image#Image', 'Invoked as function.');
 	this.$super(ownerDoc, node);
-	$assert(node.nodeName.toLowerCase() === 'img', 'js.dom.Image#Image', 'Node is not an image.');
 
 	/**
 	 * Default value used by {@link #setSrc(String)} when given value is undefined, null or empty. Also this default

@@ -15,7 +15,6 @@ $package('js.dom');
 js.dom.Checkbox = function(ownerDoc, node) {
 	$assert(this instanceof js.dom.Checkbox, 'js.dom.Checkbox#Checkbox', 'Invoked as function.');
 	this.$super(ownerDoc, node);
-	$assert(node.nodeName.toLowerCase() === 'input', 'js.dom.Checkbox#Checkbox', 'Node is not an input.');
 };
 
 js.dom.Checkbox.prototype = {
