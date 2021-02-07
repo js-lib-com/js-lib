@@ -3,7 +3,7 @@
 	<import file="d://lib/tasks.xml" />
 
 	<!-- update js-lib.xml when change version -->
-	<property name="VERSION" value="1.3.7" />
+	<property name="VERSION" value="1.3.8" />
 
 	<property name="BUILD" value="build" />
 
