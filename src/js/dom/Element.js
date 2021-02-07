@@ -1293,10 +1293,22 @@ js.dom.Element.prototype = {
 		if (!key) {
 			return null;
 		}
+		
+		var data;
+		if(typeof this._node.dataset !== "undefined") {
+			data = this._node.dataset[key];
+		}
+		else {
+			data = this.getAttr("data-" + key);
+		}
+		if(data) {
+			return data;
+		} 
+		
 		if (typeof this._userData === "undefined") {
 			return null;
 		}
-		var data = this._userData[key];
+		data = this._userData[key];
 		return typeof data !== "undefined" ? data : null;
 	},
 
